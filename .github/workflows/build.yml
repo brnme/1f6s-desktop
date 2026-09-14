@@ -198,9 +198,16 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          # Windows 无 rpath:测试 exe 在构建树里跑,Qt DLL 须在 PATH(Qt bin);
-          # 引擎目录进 PATH 供四个真转码测试定位 ffmpeg.exe/ffprobe.exe
-          export PATH="$QT_ROOT/bin:$ENGINES_DIR:$PATH"
+          set -euxo pipefail
+          # Windows 无 rpath:构建树里的测试 exe 找不到 Qt6*.dll(0xc0000135)。
+          # bash→原生进程的 PATH 形态转换不可靠(C:/ 形态混进 POSIX 列表),
+          # 直接 windeployqt 把 Qt DLL 部署到测试 exe 同目录——8 个 exe 同
+          # 目录,部署一次全覆盖;ffmpeg 引擎目录走 POSIX 形态 PATH 注入。
+          ls "$QT_ROOT/bin/Qt6Core.dll"
+          ls build-win/tests/Release/test_vectors.exe
+          "$QT_ROOT/bin/windeployqt.exe" --release --no-translations \
+            build-win/tests/Release/test_vectors.exe
+          export PATH="$ENGINES_DIR:$PATH"
           ctest --test-dir build-win -C Release --output-on-failure
       - name: 组装便携 zip + 打包产物冒烟
         run: bash packaging/make_windows_zip.sh build-win "$QT_ROOT" "$ENGINES_DIR" dist
