@@ -64,9 +64,10 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install aqtinstall cmake ninja
-      - name: 安装 Qt 6.2.4 (qtbase)
+      - name: 安装 Qt 6.2.4 (qtbase + qttools)
         run: |
-          aqt install-qt mac desktop 6.2.4 clang_64 --archives qtbase --outputdir "$HOME/Qt"
+          # qttools 提供 macdeployqt(qtbase 不含;Linux 侧用 linuxdeploy 故不需要)
+          aqt install-qt mac desktop 6.2.4 clang_64 --archives qtbase qttools --outputdir "$HOME/Qt"
           # Qt 6.2 的 mac 包(参数名 clang_64)实际安装目录是 macos/——
           # 官方二进制为 X86_64-ARM64 通用构建,Intel/Apple Silicon 共用。
           QT_ROOT="$HOME/Qt/6.2.4/macos"
