@@ -32,7 +32,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
             git ca-certificates libatomic1
           git config --global --add safe.directory '*'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: 构建 + 测试 + AppImage(与本地同一脚本)
         run: bash packaging/make_appimage.sh --in-container
       - name: 上传构建产物
@@ -54,7 +54,12 @@ jobs:
     # (github.blog/changelog/2025-09-19)。arm64 见文末注释块。
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # 镜像自带 python3 是 externally-managed(PEP 668)/缺 pip,直接装会 exit 1;
+      # setup-python 给一个带 pip 的干净解释器。
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: 安装工具链(aqtinstall/cmake/ninja;cmake+ninja 仅为对齐本地版本)
         run: |
           python3 -m pip install --upgrade pip
