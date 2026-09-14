@@ -1,0 +1,34 @@
+# TODO(M5): 接入真实构建矩阵(aqt 装 Qt 6.2.4 + cmake/ninja + cpack 打包)。
+# 当前为占位骨架,仅证明 workflow 语法与 job 划分,不执行任何构建。
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Linux (glibc 2.31 基线)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      # TODO(M5):
+      # - aqt install-qt linux desktop 6.2.4 gcc_64
+      # - cmake -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_ROOT
+      # - cmake --build build && ctest --test-dir build
+      # - 静态 ffmpeg 引擎下载(见 packaging/engines.json) + AppImage 打包
+      - name: placeholder
+        run: echo "TODO(M5) linux build"
+
+  macos:
+    name: macOS (10.14 基线)
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      # TODO(M5):
+      # - aqt install-qt mac desktop 6.2.4 clang_64
+      # - cmake -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_ROOT
+      # - cmake --build build && ctest --test-dir build
+      # - 静态 ffmpeg 引擎下载 + .dmg 打包与签名公证
+      - name: placeholder
+        run: echo "TODO(M5) macos build"

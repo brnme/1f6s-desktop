@@ -1,0 +1,27 @@
+{
+  "description": "超长输入超时预检。机器耗时因子 = 机器秒/输入秒,实测自 bench(2C4G 档,i7-10870H 钉 2 核):解码占墙钟 ~89%,转码耗时由输入分辨率桶×输入编码决定。上线后需在目标机重跑 scripts/bench_transcode.py 校准 factors。分辨率桶按 m=max(width,height): p720=m<=1280, p1080=<=1920, p1440=<=2560, p2160=>2560(4K 及以上共用)。编码桶: h264→h264, hevc→hevc, 其余(vp9/av1/未知)→other(保守)。margin<1: 预留安全余量;early_kill+grace_min: worker 进度投影早停(第二道防线),宽限 grace_min 分钟后按实测速度投影总耗时,必撞 ffmpeg 上限就提前 kill。",
+  "enabled": true,
+  "margin": 0.8,
+  "early_kill": true,
+  "grace_min": 5,
+  "factors": {
+    "h264": {
+      "p720": 0.096,
+      "p1080": 0.118,
+      "p1440": 0.25,
+      "p2160": 0.385
+    },
+    "hevc": {
+      "p720": 0.15,
+      "p1080": 0.182,
+      "p1440": 0.38,
+      "p2160": 0.6
+    },
+    "other": {
+      "p720": 0.23,
+      "p1080": 0.27,
+      "p1440": 0.57,
+      "p2160": 0.9
+    }
+  }
+}

@@ -1,0 +1,17 @@
+# 构建产物
+build*/
+
+# 打包时下载的静态 ffmpeg 引擎(体积大,不入库;矩阵见 packaging/engines.json)
+packaging/engines/
+
+# 本地缓存
+.cache/
+
+# 压缩包产物
+*.tar.xz
+
+# macOS
+.DS_Store
+
+# Qt Creator 用户配置
+*.user
