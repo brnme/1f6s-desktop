@@ -5,7 +5,7 @@
 ## 技术栈与基线
 
 - C++17 + Qt 6.2(Widgets/Network/Test,均在 qtbase)+ CMake(≥3.16)+ Ninja
-- 发布基线:Linux glibc 2.31 / macOS 10.14;ffmpeg 以静态引擎随包分发(见 packaging/)
+- 发布基线:Linux glibc 2.31 / macOS 10.15;ffmpeg 以静态引擎随包分发(见 packaging/)
 - 唯一参数真相源在网站仓 `1f6s-service-site/spec/levels.json`(八级规范)与
   `spec/tiers.json`(档位/预检);本仓 `assets/spec/` 是它的同步副本,**不手编**
 

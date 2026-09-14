@@ -2,7 +2,7 @@
 
 [1f6s](https://github.com/brnme/1f6s)(1帧6秒压缩倡议)在线压缩服务的桌面客户端:本地调用 ffmpeg,把超长录屏按八级规范(L1-L8)压成小体积 MP4,参数与网站端共用同一份规范表(`assets/spec/`,自网站仓同步),并以黄金向量(`vectors/vectors.json`)保证两端命令构造逐 token 一致。
 
-技术栈:C++17 + Qt 6.2 + CMake/Ninja。发布基线 Linux glibc 2.31 / macOS 10.14。
+技术栈:C++17 + Qt 6.2 + CMake/Ninja。发布基线 Linux glibc 2.31 / macOS 10.15。
 
 ## 快速开始
 
