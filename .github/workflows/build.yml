@@ -163,7 +163,10 @@ jobs:
         with:
           python-version: '3.11'
       - name: 安装工具链(aqtinstall;cmake/ctest 用镜像自带)
-        run: python -m pip install --upgrade pip aqtinstall
+        # 钉 3.1 系:3.3.0 的新 py7zr 解 Qt 6.2.4 的 windows qttools 归档抛
+        # Bad7zFile "Specified path is bad"(qtbase 不受影响,mac 归档也不受),
+        # 3.1.x 时代的 py7zr 0.20.x 可正常解包
+        run: python -m pip install --upgrade pip "aqtinstall==3.1.18"
       - name: 安装 Qt 6.2.4 (win64_msvc2019_64)
         run: |
           # qttools 提供 windeployqt(qtbase 不含;Qt6 里 Windows 与 mac 同规,
