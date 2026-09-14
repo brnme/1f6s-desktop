@@ -150,8 +150,12 @@ jobs:
   windows:
     name: Windows 便携 zip (x64, Windows 10 基线)
     # windows-2022 带 VS2022;Qt 6.2.4 官方二进制是 msvc2019_64(v142),
-    # 与 v143 二进制 ABI 兼容(MSVC 2015 起稳定)。步骤用 runner 自带 git-bash。
+    # 与 v143 二进制 ABI 兼容(MSVC 2015 起稳定)。步骤用 runner 自带 git-bash
+    # ——Windows runner 默认 shell 是 pwsh(\ 续行符与 bash 语法均不认,首跑即翻车)。
     runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
       # 同 macos:setup-python 给带 pip 的干净解释器
