@@ -166,8 +166,10 @@ jobs:
         run: python -m pip install --upgrade pip aqtinstall
       - name: 安装 Qt 6.2.4 (win64_msvc2019_64)
         run: |
+          # qttools 提供 windeployqt(qtbase 不含;Qt6 里 Windows 与 mac 同规,
+          # 第三跑载在少装这个归档上:Qt6Core.dll 在而 windeployqt.exe 不在)
           python -m aqt install-qt windows desktop 6.2.4 win64_msvc2019_64 \
-            --archives qtbase --outputdir "$HOME/Qt"
+            --archives qtbase qttools --outputdir "$HOME/Qt"
           # cygpath -m:C:/ 风格——给原生 cmake/windeployqt 用,git-bash 也认
           QT_ROOT=$(cygpath -m "$HOME/Qt/6.2.4/msvc2019_64")
           [ -f "$QT_ROOT/bin/qmake.exe" ] || { echo "qmake 不在 $QT_ROOT"; ls "$HOME/Qt/6.2.4"; exit 1; }
