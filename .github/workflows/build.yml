@@ -64,10 +64,14 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install aqtinstall cmake ninja
-      - name: 安装 Qt 6.2.4 clang_64 (qtbase + icu)
+      - name: 安装 Qt 6.2.4 (qtbase)
         run: |
-          aqt install-qt mac desktop 6.2.4 clang_64 --archives qtbase icu --outputdir "$HOME/Qt"
-          echo "QT_ROOT=$HOME/Qt/6.2.4/clang_64" >> "$GITHUB_ENV"
+          aqt install-qt mac desktop 6.2.4 clang_64 --archives qtbase --outputdir "$HOME/Qt"
+          # Qt 6.2 的 mac 包(参数名 clang_64)实际安装目录是 macos/——
+          # 官方二进制为 X86_64-ARM64 通用构建,Intel/Apple Silicon 共用。
+          QT_ROOT="$HOME/Qt/6.2.4/macos"
+          [ -x "$QT_ROOT/bin/qmake" ] || { echo "qmake 不在 $QT_ROOT"; ls "$HOME/Qt/6.2.4"; exit 1; }
+          echo "QT_ROOT=$QT_ROOT" >> "$GITHUB_ENV"
       - name: brew 安装 ffmpeg(仅 ctest 造 fixture 与真转码用)
         run: brew install ffmpeg
       - name: CMake 配置 + 构建 (Release)
