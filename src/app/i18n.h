@@ -5,7 +5,7 @@
 // t() 缺失时回退返回 key 本身,页面永不因缺词条崩溃。
 //
 // 语言偏好存 QSettings(org "1f6s" / app "1f6s-desktop",由 main.cpp 设定),
-// key 为 "language":system(默认,按 QLocale)/ en / zh;切换后重启生效,
+// key 为 "language":en(默认)/ system(按 QLocale)/ zh;切换后重启生效,
 // 不做运行时重译。占位符语法与网站一致:{name}(见 t 的 args 重载)。
 #pragma once
 
@@ -31,7 +31,7 @@ QString t(const QString& key, const QVector<QPair<QString, QString>>& args);
 QString language();
 
 // 语言偏好(QSettings "language")→ 实际语言:"en"/"zh"。
-// system → QLocale::system() 以 zh 开头算中文,其余一律英文。
+// system → QLocale::system() 以 zh 开头算中文;其余取值(缺省/未知)一律英文。
 QString resolveLanguage(const QString& preference);
 
 // 写语言偏好到 QSettings;不重载词条(重启生效)。

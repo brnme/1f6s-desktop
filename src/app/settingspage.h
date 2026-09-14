@@ -1,6 +1,6 @@
 // settingspage.h — 「设置」页(M4)。
 //
-// 通用:语言(system/en/zh,写 QSettings,重启生效)。
+// 通用:语言(默认 en;可选 system/en/zh,写 QSettings,重启生效)。
 // 转码:低进程优先级 / 线程上限 / 预设速度 —— 写 QSettings 并发
 // runtimeOptionsChanged,主窗口把它们灌进 JobModel(对之后启动的任务即时生效)。
 // 线程上限与预设速度是对网站命令的用户主动偏离(AGENTS.md「有意偏离」2/3 条),

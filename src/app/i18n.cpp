@@ -69,13 +69,13 @@ void init(const QString& assets_dir) {
         table(QStringLiteral("en")) = loadTable(dir, QStringLiteral("en"));
         table(QStringLiteral("zh")) = loadTable(dir, QStringLiteral("zh"));
         currentLang() = resolveLanguage(
-            QSettings().value(kLanguageKey, QStringLiteral("system")).toString());
+            QSettings().value(kLanguageKey, QStringLiteral("en")).toString());
         initialized() = true;
         return;
     }
     initialized() = true;  // 找不到词条目录也标记完成,避免每次 t() 重扫
     currentLang() = resolveLanguage(
-        QSettings().value(kLanguageKey, QStringLiteral("system")).toString());
+        QSettings().value(kLanguageKey, QStringLiteral("en")).toString());
 }
 
 QString t(const QString& key) {
@@ -96,10 +96,12 @@ QString language() { return currentLang(); }
 QString resolveLanguage(const QString& preference) {
     if (preference == QLatin1String("en") || preference == QLatin1String("zh"))
         return preference;
-    // system(及任何未知值):按系统 locale 判别,zh 开头算中文。
-    return QLocale::system().name().startsWith(QLatin1String("zh"))
-               ? QStringLiteral("zh")
-               : QStringLiteral("en");
+    if (preference == QLatin1String("system"))
+        return QLocale::system().name().startsWith(QLatin1String("zh"))
+                   ? QStringLiteral("zh")
+                   : QStringLiteral("en");
+    // 其余取值(缺省/未知)一律英文:默认语言是英语,与网站英文优先一致。
+    return QStringLiteral("en");
 }
 
 void setLanguagePreference(const QString& preference) {

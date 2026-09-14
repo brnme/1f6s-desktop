@@ -169,7 +169,7 @@ private slots:
         QVERIFY(!one6s::i18n::selectLanguage(QStringLiteral("fr")));
         QCOMPARE(one6s::i18n::language(), QStringLiteral("zh"));
 
-        // resolveLanguage:显式值直通,未知值按系统 locale 回退(只验合法域)。
+        // resolveLanguage:显式值直通;system 按系统 locale;未知/空值一律英文(默认语言)。
         QCOMPARE(one6s::i18n::resolveLanguage(QStringLiteral("en")),
                  QStringLiteral("en"));
         QCOMPARE(one6s::i18n::resolveLanguage(QStringLiteral("zh")),
@@ -178,6 +178,10 @@ private slots:
                     QStringLiteral("en") ||
                 one6s::i18n::resolveLanguage(QStringLiteral("system")) ==
                     QStringLiteral("zh"));
+        QCOMPARE(one6s::i18n::resolveLanguage(QStringLiteral("fr")),
+                 QStringLiteral("en"));
+        QCOMPARE(one6s::i18n::resolveLanguage(QString()),
+                 QStringLiteral("en"));
     }
 };
 

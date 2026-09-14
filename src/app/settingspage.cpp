@@ -67,13 +67,13 @@ SettingsPage::SettingsPage(QWidget* parent) : QWidget(parent) {
         one6s::i18n::t(QStringLiteral("settings.group.general")), this);
     auto* generalForm = new QFormLayout(general);
     languageCombo_ = new QComboBox(general);
+    languageCombo_->addItem(QStringLiteral("English"), QStringLiteral("en"));
     languageCombo_->addItem(
         one6s::i18n::t(QStringLiteral("settings.language.system")),
         QStringLiteral("system"));
-    languageCombo_->addItem(QStringLiteral("English"), QStringLiteral("en"));
     languageCombo_->addItem(QStringLiteral("中文"), QStringLiteral("zh"));
     const int lang_idx = languageCombo_->findData(
-        s.value(QStringLiteral("language"), QStringLiteral("system")).toString());
+        s.value(QStringLiteral("language"), QStringLiteral("en")).toString());
     if (lang_idx >= 0) languageCombo_->setCurrentIndex(lang_idx);
     generalForm->addRow(one6s::i18n::t(QStringLiteral("settings.language")),
                         languageCombo_);
