@@ -105,7 +105,7 @@ jobs:
           # 再分发合规:THIRD_PARTY.md 与许可文本随包
           cp THIRD_PARTY.md "$APP/Contents/Resources/doc/"
           cp packaging/licenses/* "$APP/Contents/Resources/doc/licenses/"
-          macdeployqt "$APP" -verbose=1
+          "$QT_ROOT/bin/macdeployqt" "$APP" -verbose=1
           # 内置静态引擎(engines.json darwin-amd64 主选 evermeet.cx;getrelease 别名指向最新 release)
           TMP=$(mktemp -d)
           curl -sSL --retry 3 -o "$TMP/ffmpeg.zip"  "https://evermeet.cx/ffmpeg/getrelease/zip"
