@@ -24,11 +24,14 @@ jobs:
       APT_MIRROR: archive.ubuntu.com
       PIP_INDEX_URL: https://pypi.org/simple
     steps:
-      # ubuntu:20.04 基础镜像无 git,checkout 前先补上
-      - name: 安装 git(checkout 依赖)
+      # ubuntu:20.04 基础镜像无 git/ca-certificates/libatomic1,checkout 前先补上;
+      # safe.directory '*' 防容器内 dubious ownership(工作区属主是宿主 uid)。
+      - name: 安装 git 与运行库(checkout 依赖)
         run: |
           apt-get update -qq
-          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends git
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            git ca-certificates libatomic1
+          git config --global --add safe.directory '*'
       - uses: actions/checkout@v4
       - name: 构建 + 测试 + AppImage(与本地同一脚本)
         run: bash packaging/make_appimage.sh --in-container
