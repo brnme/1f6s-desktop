@@ -198,7 +198,9 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          export PATH="$ENGINES_DIR:$PATH"
+          # Windows 无 rpath:测试 exe 在构建树里跑,Qt DLL 须在 PATH(Qt bin);
+          # 引擎目录进 PATH 供四个真转码测试定位 ffmpeg.exe/ffprobe.exe
+          export PATH="$QT_ROOT/bin:$ENGINES_DIR:$PATH"
           ctest --test-dir build-win -C Release --output-on-failure
       - name: 组装便携 zip + 打包产物冒烟
         run: bash packaging/make_windows_zip.sh build-win "$QT_ROOT" "$ENGINES_DIR" dist

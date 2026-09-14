@@ -9,9 +9,10 @@ set -uo pipefail
 exe=$1
 timeout_s=${2:-60}
 
-export QT_QPA_PLATFORM=offscreen 1F6S_SMOKE_EXIT_MS=3000
-
-"$exe" &
+# 1F6S_SMOKE_EXIT_MS 以数字开头,不是合法 shell 标识符——export 会报
+# "not a valid identifier" 且变量根本设不上(mac 首跑即栽在这),一律经
+# env 注入(与 make_appimage.sh 宿主冒烟同款)。
+env QT_QPA_PLATFORM=offscreen 1F6S_SMOKE_EXIT_MS=3000 "$exe" &
 pid=$!
 for _ in $(seq 1 "$timeout_s"); do
     kill -0 "$pid" 2>/dev/null || break
