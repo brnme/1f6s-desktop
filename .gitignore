@@ -1,6 +1,12 @@
 # 构建产物
 build*/
 
+# 打包产物(AppImage/dmg 等,由 packaging/make_appimage.sh 或 CI 产出)
+dist/
+
+# AppImage 挂载点残留(fuse)
+.fuse_hidden*
+
 # 打包时下载的静态 ffmpeg 引擎(体积大,不入库;矩阵见 packaging/engines.json)
 packaging/engines/
 

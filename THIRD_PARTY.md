@@ -28,15 +28,17 @@
   必须履行 GPLv3 义务**:随包提供/指明对应源码链接与完整许可文本,并附
    Changes 说明(未修改则注明原样分发)。打包脚本负责,见 `packaging/engines.json`。
 - 各平台分发源(即对应源码可获取处,矩阵与校验记录见 `packaging/engines.json`):
-  - linux-amd64:https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz
-    (ffmpeg.org 官方下载页推荐的 Linux 静态构建源;GPL v3,含 libx264/libx265/原生 aac)
-  - linux-arm64:https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linuxarm64-gpl-8.1.tar.xz(同上,arm64)
+  - linux-amd64 / linux-arm64:https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1
+    (johnvansickle.com/ffmpeg 静态构建的 GitHub 镜像分发,实测二进制 7.0.2-static;
+    全静态链接,GPL v3,含 libx264/libx265/原生 aac。GPLv3 义务的构建脚本
+    见该仓库,FFmpeg 本体源码见下;备用源 BtbN/FFmpeg-Builds 记录于 engines.json)
   - darwin-amd64(Intel Mac):https://evermeet.cx/ffmpeg/(release/zip 与 ffprobe/zip;源码与 GPG 签名同站提供)
   - darwin-arm64(Apple Silicon):https://www.osxexperts.net/(ffmpeg9arm.zip / ffprobe9arm.zip;页面公布逐文件 SHA256。注意该站标注 "for educational purposes only",商用再分发前需法务确认,见 engines.json 记录)
 - FFmpeg 本体源码:https://git.ffmpeg.org/ffmpeg.git ;许可文本
   https://www.gnu.org/licenses/gpl-3.0.html
-- 本仓 `packaging/engines/linux-amd64/` 内固化的二进制为上述 BtbN 资产的
-  原样抽取产物(未修改),sha256 记录在 `packaging/engines.json`。
+- 本仓 `packaging/engines/linux-amd64/` 内固化的二进制为上述 eugeneware/ffmpeg-static
+  b6.1.1 资产(linux-x64,7.0.2-static)的原样下载产物(未修改),sha256 记录在
+  `packaging/engines.json`。
 
 ## 4. 1f6s 压缩规范(spec)
 

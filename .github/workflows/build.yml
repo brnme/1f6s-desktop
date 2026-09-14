@@ -1,34 +1,139 @@
-# TODO(M5): 接入真实构建矩阵(aqt 装 Qt 6.2.4 + cmake/ninja + cpack 打包)。
-# 当前为占位骨架,仅证明 workflow 语法与 job 划分,不执行任何构建。
+# 构建矩阵:
+#   linux — ubuntu:20.04 容器内构建 AppImage(glibc 2.31 发布基线),与本地
+#           `packaging/make_appimage.sh` 完全同一脚本(CI 只是少一层 podman);
+#   macos — macos-13(x86_64)构建 .app → dmg(macOS 10.14 基线,Qt 6.2 clang_64)。
+# push 到 main:构建 + ctest;打 v* tag:构建 + ctest + 发布 GitHub Release。
 name: build
 
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   workflow_dispatch:
+
+permissions:
+  contents: write   # v* tag 时发布 Release 需要
 
 jobs:
   linux:
-    name: Linux (glibc 2.31 基线)
+    name: Linux AppImage (glibc 2.31 基线)
     runs-on: ubuntu-22.04
+    container: ubuntu:20.04
+    env:
+      # CI 网络好,用官方源(本地构建默认阿里镜像,见脚本)
+      APT_MIRROR: archive.ubuntu.com
+      PIP_INDEX_URL: https://pypi.org/simple
     steps:
+      # ubuntu:20.04 基础镜像无 git,checkout 前先补上
+      - name: 安装 git(checkout 依赖)
+        run: |
+          apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends git
       - uses: actions/checkout@v4
-      # TODO(M5):
-      # - aqt install-qt linux desktop 6.2.4 gcc_64
-      # - cmake -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_ROOT
-      # - cmake --build build && ctest --test-dir build
-      # - 静态 ffmpeg 引擎下载(见 packaging/engines.json) + AppImage 打包
-      - name: placeholder
-        run: echo "TODO(M5) linux build"
+      - name: 构建 + 测试 + AppImage(与本地同一脚本)
+        run: bash packaging/make_appimage.sh --in-container
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1f6s-desktop-linux-x86_64
+          path: dist/
+          if-no-files-found: error
+      - name: 发布 Release(仅 v* tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
 
   macos:
-    name: macOS (10.14 基线)
+    name: macOS dmg (x86_64, macOS 10.14 基线)
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
-      # TODO(M5):
-      # - aqt install-qt mac desktop 6.2.4 clang_64
-      # - cmake -B build -G Ninja -DCMAKE_PREFIX_PATH=$QT_ROOT
-      # - cmake --build build && ctest --test-dir build
-      # - 静态 ffmpeg 引擎下载 + .dmg 打包与签名公证
-      - name: placeholder
-        run: echo "TODO(M5) macos build"
+      - name: 安装工具链(aqtinstall/cmake/ninja;cmake+ninja 仅为对齐本地版本)
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install aqtinstall cmake ninja
+      - name: 安装 Qt 6.2.4 clang_64 (qtbase + icu)
+        run: |
+          aqt install-qt mac desktop 6.2.4 clang_64 --archives qtbase icu --outputdir "$HOME/Qt"
+          echo "QT_ROOT=$HOME/Qt/6.2.4/clang_64" >> "$GITHUB_ENV"
+      - name: brew 安装 ffmpeg(仅 ctest 造 fixture 与真转码用)
+        run: brew install ffmpeg
+      - name: CMake 配置 + 构建 (Release)
+        run: |
+          cmake -B build-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT"
+          cmake --build build-macos
+      - name: ctest
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build-macos --output-on-failure
+      - name: 组装 .app(macdeployqt + evermeet 静态引擎)
+        run: |
+          set -euxo pipefail
+          VER=$(sed -n 's/^project(1f6s-desktop VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt | head -1)
+          APP=app/1f6s-desktop.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/doc/licenses"
+          cp build-macos/1f6s-desktop "$APP/Contents/MacOS/"
+          sed "s/@VER@/$VER/g" packaging/Info.plist.in > "$APP/Contents/Info.plist"
+          # 图标:PNG → icns(sips/iconutil 是 macOS 自带)
+          mkdir icon.iconset
+          for s in 16 32 128 256; do
+            sips -z $s $s packaging/icon/1f6s-desktop-256.png \
+              --out "icon.iconset/icon_${s}x${s}.png" >/dev/null
+          done
+          iconutil -c icns icon.iconset -o "$APP/Contents/Resources/1f6s-desktop.icns"
+          # 再分发合规:THIRD_PARTY.md 与许可文本随包
+          cp THIRD_PARTY.md "$APP/Contents/Resources/doc/"
+          cp packaging/licenses/* "$APP/Contents/Resources/doc/licenses/"
+          macdeployqt "$APP" -verbose=1
+          # 内置静态引擎(engines.json darwin-amd64 主选 evermeet.cx;getrelease 别名指向最新 release)
+          TMP=$(mktemp -d)
+          curl -sSL --retry 3 -o "$TMP/ffmpeg.zip"  "https://evermeet.cx/ffmpeg/getrelease/zip"
+          curl -sSL --retry 3 -o "$TMP/ffprobe.zip" "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip"
+          unzip -o -j "$TMP/ffmpeg.zip"  -d "$TMP"
+          unzip -o -j "$TMP/ffprobe.zip" -d "$TMP"
+          enc=$("$TMP/ffmpeg" -hide_banner -encoders 2>/dev/null)
+          echo "$enc" | grep -qE '\blibx264\b'
+          echo "$enc" | grep -qE '\blibx265\b'
+          echo "$enc" | grep -qE '\baac\b'
+          "$TMP/ffmpeg" -version | head -1
+          # 静态引擎二进制不被 macdeployqt 处理,直接放进 Contents/MacOS
+          # (运行时经 applicationDirPath() 定位,见 src/jobs/engine.cpp)
+          cp "$TMP/ffmpeg" "$TMP/ffprobe" "$APP/Contents/MacOS/"
+          shasum -a 256 "$APP/Contents/MacOS/ffmpeg" "$APP/Contents/MacOS/ffprobe" \
+            > "$APP/Contents/Resources/doc/engines-macos.sha256"
+      - name: 打 dmg + SHA256SUMS
+        run: |
+          set -euxo pipefail
+          VER=$(sed -n 's/^project(1f6s-desktop VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt | head -1)
+          mkdir -p dist
+          hdiutil create -volname "1f6s-desktop" -srcfolder app/1f6s-desktop.app \
+            -format UDZO -ov "dist/1f6s-desktop-${VER}-x86_64.dmg"
+          ( cd dist && shasum -a 256 * > SHA256SUMS )
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1f6s-desktop-macos-x86_64
+          path: dist/
+          if-no-files-found: error
+      - name: 发布 Release(仅 v* tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+  # ---- 可选:Apple Silicon 原生构建(本次不启用,待真机验证后放开) ----
+  # 差异点:
+  #   runs-on: macos-14(arm64)
+  #   aqt install-qt mac desktop 6.2.4 clang_arm64 --archives qtbase icu
+  #   引擎换 osxexperts.net(engines.json darwin-arm64):
+  #     curl -o ffmpeg.zip  https://www.osxexperts.net/ffmpeg9arm.zip
+  #     curl -o ffprobe.zip https://www.osxexperts.net/ffprobe9arm.zip
+  #     按页面公布 SHA256 校验后:xattr -dr com.apple.quarantine <解压文件>
+  #     codesign -s - <ffmpeg/ffprobe>(ad-hoc 签名,Apple Silicon 必需)
+  #   dmg 命名 1f6s-desktop-<VER>-arm64.dmg;engines.json 已注明该源
+  #   "for educational purposes only",商用分发前需法务确认。

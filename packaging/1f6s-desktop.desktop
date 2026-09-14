@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=1f6s Desktop
+GenericName=Video Compressor
+Comment=1f6s 在线压缩服务桌面客户端(本地 ffmpeg 转码)
+Exec=1f6s-desktop
+Icon=1f6s-desktop
+Terminal=false
+Categories=AudioVideo;Video;Utility;
+StartupWMClass=1f6s-desktop

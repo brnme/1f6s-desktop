@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- 1f6s-desktop 图标:暗色圆角方块 + "1f6s" + 底部高亮条(与主程序暗色 UI 同调) -->
+  <rect width="256" height="256" rx="56" fill="#1e1f22"/>
+  <text x="128" y="128" text-anchor="middle" dominant-baseline="central"
+        font-family="DejaVu Sans Mono, Menlo, Consolas, monospace"
+        font-size="88" font-weight="bold" letter-spacing="2"
+        fill="#cfd2d6">1f6s</text>
+  <rect x="40" y="172" width="176" height="6" rx="3" fill="#3d6b9e"/>
+</svg>
