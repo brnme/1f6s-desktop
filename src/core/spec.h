@@ -25,6 +25,7 @@ struct SpecError : std::runtime_error {
 // levels.json 中单个等级的字段(与 vectors.json eff 字段一一对应)。
 struct Level {
     std::string id;
+    std::string name;           // 显示名,如 "智能调优级"(不参与参数对拍,M2 起供 UI 用)
     std::string interval;       // 原始字段,如 "1/6"(spec 值,非白名单 token)
     std::string scale;          // 如 "-2:480"
     std::string color;          // "color" | "gray"

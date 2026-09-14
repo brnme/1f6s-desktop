@@ -36,6 +36,7 @@ Spec Spec::parse(const nlohmann::json& j) {
     for (const auto& lv : j.value("levels", nlohmann::json::array())) {
         Level l;
         l.id = lv.at("id").get<std::string>();
+        l.name = lv.value("name", "");  // UI 显示用;缺失容错,不影响参数对拍
         l.interval = lv.value("interval", "1/6");
         l.scale = lv.value("scale", "");
         l.color = lv.value("color", "color");

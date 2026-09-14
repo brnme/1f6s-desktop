@@ -26,3 +26,9 @@ add_test(NAME test_precheck COMMAND test_precheck)
 add_executable(test_probe test_probe.cpp)
 target_link_libraries(test_probe PRIVATE core_lib Qt6::Test)
 add_test(NAME test_probe COMMAND test_probe)
+
+# --- M2 jobs 层(headless 集成:真实 ffmpeg 现场合成/转码,缺失时 QSKIP) ---
+add_executable(test_jobs test_jobs.cpp)
+target_link_libraries(test_jobs PRIVATE jobs_lib Qt6::Test)
+target_compile_definitions(test_jobs PRIVATE SPEC_DIR="${SPEC_DIR}")
+add_test(NAME test_jobs COMMAND test_jobs)

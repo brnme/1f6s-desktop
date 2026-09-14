@@ -28,15 +28,19 @@ find_package(Qt6 6.2 REQUIRED COMPONENTS Widgets Network Test)
 
 # M1:核心库(规范解析/命令构造/探测/预检/分割规划),主程序与 tests 共用。
 add_subdirectory(src/core)
+# M2:进程编排(引擎定位/ffmpeg 作业/队列),UI 无关,tests 亦用。
+add_subdirectory(src/jobs)
 
 add_executable(1f6s-desktop
     src/main.cpp
     src/app/mainwindow.cpp
-    # M2: src/jobs/*(ffmpeg 作业调度)由后续里程碑填充
 )
 
 target_include_directories(1f6s-desktop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(1f6s-desktop PRIVATE Qt6::Widgets Qt6::Network core_lib)
+# 开发态 assets 路径;打包态运行时回退 applicationDirPath()/../assets(见 src/main.cpp)。
+target_compile_definitions(1f6s-desktop PRIVATE
+    ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+target_link_libraries(1f6s-desktop PRIVATE Qt6::Widgets Qt6::Network core_lib jobs_lib)
 
 enable_testing()
 add_subdirectory(tests)
