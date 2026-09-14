@@ -32,3 +32,14 @@ add_executable(test_jobs test_jobs.cpp)
 target_link_libraries(test_jobs PRIVATE jobs_lib Qt6::Test)
 target_compile_definitions(test_jobs PRIVATE SPEC_DIR="${SPEC_DIR}")
 add_test(NAME test_jobs COMMAND test_jobs)
+
+# --- M3 分割执行(headless 集成:12s 密集关键帧视频 → 3×4s 分割全链路) ---
+add_executable(test_splitter_run test_splitter_run.cpp)
+target_link_libraries(test_splitter_run PRIVATE jobs_lib Qt6::Test)
+add_test(NAME test_splitter_run COMMAND test_splitter_run)
+
+# --- M3 队列语义(headless 集成:FIFO 串行/取消/移除) ---
+add_executable(test_queue test_queue.cpp)
+target_link_libraries(test_queue PRIVATE jobs_lib Qt6::Test)
+target_compile_definitions(test_queue PRIVATE SPEC_DIR="${SPEC_DIR}")
+add_test(NAME test_queue COMMAND test_queue)

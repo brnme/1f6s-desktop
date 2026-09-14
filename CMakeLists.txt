@@ -34,6 +34,8 @@ add_subdirectory(src/jobs)
 add_executable(1f6s-desktop
     src/main.cpp
     src/app/mainwindow.cpp
+    src/app/compresspage.cpp
+    src/app/splitpage.cpp
 )
 
 target_include_directories(1f6s-desktop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

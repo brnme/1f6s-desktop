@@ -12,10 +12,10 @@
 namespace one6s::splitter {
 
 SplitPlan planSplit(double duration_s, double size_bytes, double tier_max_mb,
-                    double precheck_max_s) {
+                    double precheck_max_s, double min_segment_s) {
     const double bitrate = size_bytes / std::max(duration_s, 1.0);
     double t = std::min(tier_max_mb * 1024.0 * 1024.0 * 0.95 / bitrate, precheck_max_s);
-    t = std::max(t, 60.0);  // 段长下限 60s
+    t = std::max(t, min_segment_s);  // 段长下限(默认 60s)
     int parts = static_cast<int>(std::ceil(duration_s / t));
     if (parts < 1) parts = 1;  // t=inf(0 字节且预检不设限)时 ceil→0,至少给 1 段
     return {t, parts};

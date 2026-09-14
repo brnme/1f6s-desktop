@@ -1,4 +1,7 @@
+// jobmodel.cpp — 任务队列实现(FIFO 串行;compress 与 split 两类任务)。
 #include "jobs/jobmodel.h"
+
+#include <QFileInfo>
 
 #include "core/encode.h"
 
@@ -22,6 +25,7 @@ quint64 JobModel::enqueue(const QString& input_path, const QString& output_path,
                           double duration_s, bool has_audio) {
     JobRecord rec;
     rec.id = nextId_++;
+    rec.kind = JobKind::Compress;
     rec.inputPath = input_path;
     rec.outputPath = output_path;
     rec.levelId = level_id;
@@ -33,36 +37,83 @@ quint64 JobModel::enqueue(const QString& input_path, const QString& output_path,
     try {
         rec.eff = resolve(spec_, level_id.toStdString(), overrides);
     } catch (const std::exception& e) {
-        rec.state = JobState::Failed;
-        rec.error = QString::fromUtf8(e.what());
-        const quint64 id = rec.id;
-        records_.emplace(id, std::move(rec));
-        emit jobEnqueued(id);
-        emit jobUpdated(id);
-        emit jobFinished(id, JobState::Failed, records_.at(id).error);
-        return id;
+        return failImmediate(std::move(rec), QString::fromUtf8(e.what()));
     }
-    if (!engines_.ok()) {
-        rec.state = JobState::Failed;
-        rec.error = QStringLiteral("未找到 ffmpeg/ffprobe,请重新安装本程序。");
-    }
+    if (!engines_.ok())
+        return failImmediate(std::move(rec),
+                             QStringLiteral("未找到 ffmpeg/ffprobe,请重新安装本程序。"));
 
     const quint64 id = rec.id;
     records_.emplace(id, std::move(rec));
     emit jobEnqueued(id);
-    if (records_.at(id).state == JobState::Failed) {
-        emit jobUpdated(id);
-        emit jobFinished(id, JobState::Failed, records_.at(id).error);
-        return id;
-    }
+    emit taskAdded(id);
+    emit taskUpdated(id);
     queue_.push_back(id);
-    emit jobUpdated(id);
     startNext();
     return id;
 }
 
+quint64 JobModel::enqueueSplit(const SplitParams& params) {
+    JobRecord rec;
+    rec.id = nextId_++;
+    rec.kind = JobKind::Split;
+    rec.inputPath = params.inputPath;
+    rec.outputPath = params.outputDir.isEmpty()
+                         ? QFileInfo(params.inputPath).absolutePath()
+                         : params.outputDir;
+    rec.durationS = params.durationS;
+    rec.split = params;
+    rec.levelId = QStringLiteral("split");
+
+    if (!engines_.ok())
+        return failImmediate(std::move(rec),
+                             QStringLiteral("未找到 ffmpeg/ffprobe,请重新安装本程序。"));
+
+    const quint64 id = rec.id;
+    records_.emplace(id, std::move(rec));
+    emit jobEnqueued(id);
+    emit taskAdded(id);
+    emit taskUpdated(id);
+    queue_.push_back(id);
+    startNext();
+    return id;
+}
+
+quint64 JobModel::failImmediate(JobRecord&& rec, const QString& error) {
+    rec.state = JobState::Failed;
+    rec.error = error;
+    const quint64 id = rec.id;
+    records_.emplace(id, std::move(rec));
+    emit jobEnqueued(id);
+    emit taskAdded(id);
+    emit taskUpdated(id);
+    emit jobFinished(id, JobState::Failed, records_.at(id).error);
+    return id;
+}
+
+bool JobModel::removeQueued(quint64 id) {
+    auto it = std::find(queue_.begin(), queue_.end(), id);
+    if (it == queue_.end()) return false;
+    queue_.erase(it);
+    auto& rec = mutableRecord(id);
+    rec.state = JobState::Cancelled;
+    emit taskRemoved(id);
+    emit taskUpdated(id);
+    emit jobFinished(id, JobState::Cancelled, {});
+    return true;
+}
+
+void JobModel::cancelTask(quint64 id) {
+    if (id == activeId_) {
+        cancelCurrent();
+        return;
+    }
+    removeQueued(id);
+}
+
 void JobModel::cancelCurrent() {
     if (active_) active_->cancel();
+    if (activeSplit_) activeSplit_->cancel();
 }
 
 const JobRecord* JobModel::record(quint64 id) const {
@@ -78,7 +129,7 @@ QList<JobRecord> JobModel::records() const {
 }
 
 void JobModel::startNext() {
-    if (active_ || queue_.empty()) return;
+    if (activeId_ != 0 || queue_.empty()) return;
     if (!engines_.ok()) {  // 队列里残留的作业一并落失败
         while (!queue_.empty()) {
             const quint64 id = queue_.front();
@@ -86,6 +137,7 @@ void JobModel::startNext() {
             auto& rec = mutableRecord(id);
             rec.state = JobState::Failed;
             rec.error = QStringLiteral("未找到 ffmpeg/ffprobe,请重新安装本程序。");
+            emit taskUpdated(id);
             emit jobUpdated(id);
             emit jobFinished(id, JobState::Failed, rec.error);
         }
@@ -96,6 +148,44 @@ void JobModel::startNext() {
     queue_.pop_front();
     JobRecord& rec = mutableRecord(id);
 
+    if (rec.kind == JobKind::Split) {
+        auto runner = std::make_unique<SplitRunner>(rec.split, engines_, this);
+        connect(runner.get(), &SplitRunner::progress, this,
+                [this, id](int percent) {
+                    if (activeId_ != id) return;
+                    auto& r = mutableRecord(id);
+                    if (percent > r.progress) r.progress = percent;
+                    emit jobProgress(id, r.progress);
+                    emit taskUpdated(id);
+                    emit jobUpdated(id);
+                });
+        connect(runner.get(), &SplitRunner::finished, this,
+                [this, id](const QString& state, const QString& error) {
+                    if (activeId_ != id) return;
+                    JobState st = JobState::Failed;
+                    if (state == QLatin1String("done")) st = JobState::Done;
+                    else if (state == QLatin1String("cancelled"))
+                        st = JobState::Cancelled;
+                    // 成功时把分割结果拷进记录,UI 结果页直接读模型。
+                    if (st == JobState::Done && activeSplit_) {
+                        auto& r = mutableRecord(id);
+                        r.splitSegments = activeSplit_->segments();
+                        r.splitWarnings = activeSplit_->warnings();
+                        r.splitPoints = activeSplit_->totalPoints();
+                    }
+                    finishActive(st, error);
+                });
+        activeId_ = id;
+        rec.state = JobState::Running;
+        rec.progress = 0;
+        emit taskUpdated(id);
+        emit jobUpdated(id);
+        activeSplit_ = std::move(runner);
+        activeSplit_->start();
+        return;
+    }
+
+    // —— compress 任务 ——
     // 两遍作业:passlogfile 放进作业专属临时目录,作业结束(PasslogDir 析构)清理。
     QString passlogfile;
     if (rec.eff.twopass) {
@@ -120,6 +210,7 @@ void JobModel::startNext() {
     activeId_ = id;
     rec.state = JobState::Running;
     rec.progress = 0;
+    emit taskUpdated(id);
     emit jobUpdated(id);
 
     active_ = std::make_unique<FfmpegJob>(std::move(cfg), this);
@@ -129,6 +220,7 @@ void JobModel::startNext() {
                 auto& r = mutableRecord(id);
                 if (percent > r.progress) r.progress = percent;
                 emit jobProgress(id, r.progress);
+                emit taskUpdated(id);
                 emit jobUpdated(id);
             });
     connect(active_.get(), &FfmpegJob::finished, this,
@@ -149,13 +241,24 @@ void JobModel::finishActive(JobState state, const QString& error) {
     rec.error = error;
     if (state == JobState::Done) rec.progress = 100;
     activeId_ = 0;
-    active_.reset();     // 作业对象随之析构
+    discardActive();     // 执行器延迟销毁(不在其 finished 槽里 delete 发送者)
     passlog_.reset();    // passlogfile 临时目录在此清理
+    emit taskUpdated(id);
     emit jobUpdated(id);
     emit jobFinished(id, state, error);
     startNext();
+    emit queueAdvanced();
 }
 
-JobRecord& JobModel::mutableRecord(quint64 id) { return records_.at(id); }
+void JobModel::discardActive() {
+    if (active_) {
+        active_->deleteLater();
+        active_.release();  // 所有权交还 Qt(deleteLater/父子析构兜底)
+    }
+    if (activeSplit_) {
+        activeSplit_->deleteLater();
+        activeSplit_.release();
+    }
+}
 
 }  // namespace one6s::jobs

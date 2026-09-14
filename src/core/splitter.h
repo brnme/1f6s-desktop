@@ -18,8 +18,10 @@ struct SplitPlan {
 };
 
 // 按档位体积上限(留 5% 余量)与预检时长上限规划分割。
+// min_segment_s:段长下限,默认 60s(与原行为一致);桌面分割执行器对短输入
+// (测试/极短视频)需要更小下限时显式传入,不影响网站语义。
 SplitPlan planSplit(double duration_s, double size_bytes, double tier_max_mb,
-                    double precheck_max_s);
+                    double precheck_max_s, double min_segment_s = 60.0);
 
 struct Container {
     std::string muxer;     // -segment_format / -f 用
