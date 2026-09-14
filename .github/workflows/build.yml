@@ -1,8 +1,10 @@
 # 构建矩阵:
-#   linux — ubuntu:20.04 容器内构建 AppImage(glibc 2.31 发布基线),与本地
-#           `packaging/make_appimage.sh` 完全同一脚本(CI 只是少一层 podman);
-#   macos — macos-13(x86_64)构建 .app → dmg(macOS 10.15 基线,Qt 6.2)。
-# push 到 main:构建 + ctest;打 v* tag:构建 + ctest + 发布 GitHub Release。
+#   linux   — ubuntu:20.04 容器内构建 AppImage(glibc 2.31 发布基线),与本地
+#             `packaging/make_appimage.sh` 完全同一脚本(CI 只是少一层 podman);
+#   macos   — macos-15-intel(x86_64)构建 .app → dmg(macOS 10.15 基线,Qt 6.2);
+#   windows — windows-2022(x64)构建便携 zip(Windows 10 基线,Qt 6.2 + MSVC)。
+# push 到 main:构建 + ctest;打 v* tag:三平台构建后由 release job 汇总发布
+# (单一入口出唯一总 SHA256SUMS,各构建 job 不再直传——避免同名资产互撞)。
 name: build
 
 on:
@@ -41,12 +43,6 @@ jobs:
           name: 1f6s-desktop-linux-x86_64
           path: dist/
           if-no-files-found: error
-      - name: 发布 Release(仅 v* tag)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
 
   macos:
     name: macOS dmg (x86_64, macOS 10.15 基线)
@@ -106,6 +102,10 @@ jobs:
           # 再分发合规:THIRD_PARTY.md 与许可文本随包
           cp THIRD_PARTY.md "$APP/Contents/Resources/doc/"
           cp packaging/licenses/* "$APP/Contents/Resources/doc/licenses/"
+          # assets(spec/i18n/因子表)随包:打包态回退目录是 MacOS 的上级
+          # (Contents/assets,见 i18n::assetCandidates)。曾整段漏拷——
+          # 组装步骤没有它,真机首开弹 spec_missing,靠打包冒烟拦住。
+          cp -r assets "$APP/Contents/assets"
           "$QT_ROOT/bin/macdeployqt" "$APP" -verbose=1
           # 内置静态引擎(engines.json darwin-amd64 主选 evermeet.cx;getrelease 别名指向最新 release)
           TMP=$(mktemp -d)
@@ -123,6 +123,15 @@ jobs:
           cp "$TMP/ffmpeg" "$TMP/ffprobe" "$APP/Contents/MacOS/"
           shasum -a 256 "$APP/Contents/MacOS/ffmpeg" "$APP/Contents/MacOS/ffprobe" \
             > "$APP/Contents/Resources/doc/engines-macos.sha256"
+      - name: 打包产物冒烟(offscreen,3 秒自退)
+        run: |
+          set -euxo pipefail
+          APP=app/1f6s-desktop.app
+          # qoffscreen 只在冒烟时放入,验完即删(不随包分发)
+          cp "$QT_ROOT/plugins/platforms/libqoffscreen.dylib" \
+            "$APP/Contents/PlugIns/platforms/"
+          bash packaging/smoke_launch.sh "$APP/Contents/MacOS/1f6s-desktop" 90
+          rm "$APP/Contents/PlugIns/platforms/libqoffscreen.dylib"
       - name: 打 dmg + SHA256SUMS
         run: |
           set -euxo pipefail
@@ -137,8 +146,87 @@ jobs:
           name: 1f6s-desktop-macos-x86_64
           path: dist/
           if-no-files-found: error
-      - name: 发布 Release(仅 v* tag)
-        if: startsWith(github.ref, 'refs/tags/v')
+
+  windows:
+    name: Windows 便携 zip (x64, Windows 10 基线)
+    # windows-2022 带 VS2022;Qt 6.2.4 官方二进制是 msvc2019_64(v142),
+    # 与 v143 二进制 ABI 兼容(MSVC 2015 起稳定)。步骤用 runner 自带 git-bash。
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+      # 同 macos:setup-python 给带 pip 的干净解释器
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装工具链(aqtinstall;cmake/ctest 用镜像自带)
+        run: python -m pip install --upgrade pip aqtinstall
+      - name: 安装 Qt 6.2.4 (win64_msvc2019_64)
+        run: |
+          python -m aqt install-qt windows desktop 6.2.4 win64_msvc2019_64 \
+            --archives qtbase --outputdir "$HOME/Qt"
+          # cygpath -m:C:/ 风格——给原生 cmake/windeployqt 用,git-bash 也认
+          QT_ROOT=$(cygpath -m "$HOME/Qt/6.2.4/msvc2019_64")
+          [ -f "$QT_ROOT/bin/qmake.exe" ] || { echo "qmake 不在 $QT_ROOT"; ls "$HOME/Qt/6.2.4"; exit 1; }
+          echo "QT_ROOT=$QT_ROOT" >> "$GITHUB_ENV"
+      - name: 下载静态引擎(BtbN n8.1.2 win64-gpl)+ sha256 校验 + 编码器冒烟
+        run: |
+          set -euxo pipefail
+          mkdir -p engines-win
+          curl -sSL --retry 3 -C - -o engines-win/ffmpeg.zip \
+            "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-14-13-17/ffmpeg-n8.1.2-52-g5a03dfa0f6-win64-gpl-8.1.zip"
+          echo "f42dca81bdcce7ccab00bde91ceceb96685beab97c42a77c003c90771b47eb17  engines-win/ffmpeg.zip" | sha256sum -c -
+          7z x -y -oengines-win engines-win/ffmpeg.zip >/dev/null
+          ENGINES_DIR=$(dirname "$(find engines-win -name ffmpeg.exe -print -quit)")
+          ls -la "$ENGINES_DIR"
+          # 版本与编码器断言:先捕获进变量再 grep(SIGPIPE 教训,同 macos job)
+          "$ENGINES_DIR/ffmpeg.exe" -version 2>/dev/null | sed -n 1p
+          enc=$("$ENGINES_DIR/ffmpeg.exe" -hide_banner -encoders 2>/dev/null)
+          echo "$enc" | grep -qE '\blibx264\b'
+          echo "$enc" | grep -qE '\blibx265\b'
+          echo "$enc" | grep -qE '\baac\b'
+          echo "ENGINES_DIR=$PWD/$ENGINES_DIR" >> "$GITHUB_ENV"
+      - name: CMake 配置 + 构建 (Release)
+        run: |
+          # VS 生成器免 vcvars/三方 action;ctest 四个真转码测试靠 PATH 里的引擎
+          cmake -B build-win -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="$QT_ROOT"
+          cmake --build build-win --config Release
+      - name: ctest
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          export PATH="$ENGINES_DIR:$PATH"
+          ctest --test-dir build-win -C Release --output-on-failure
+      - name: 组装便携 zip + 打包产物冒烟
+        run: bash packaging/make_windows_zip.sh build-win "$QT_ROOT" "$ENGINES_DIR" dist
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1f6s-desktop-windows-x64
+          path: dist/
+          if-no-files-found: error
+
+  # 三平台各自直传 Release 的老流程有硬伤:每 job 都带一份同名 SHA256SUMS
+  # 资产互撞,且三个 job 并发创建同一 Release 竞态。改为汇总单点发布。
+  release:
+    name: 汇总发布 Release(仅 v* tag)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: 汇总三平台构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: 重新生成唯一总 SHA256SUMS
+        run: |
+          set -euxo pipefail
+          cd dist
+          # 各 job 自带的同名 SHA256SUMS 在 merge 时只剩最后一份,统一删掉重生成
+          rm -f SHA256SUMS
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      - name: 发布 Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
