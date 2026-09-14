@@ -1,0 +1,43 @@
+{
+  "linux-amd64": {
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linux64-gpl-8.1.tar.xz",
+    "sha256_tarxz": "bf0fe67edb092775bcc60cdceba43b855c8b36edf223b15f0101a0da0092f7ff",
+    "ffmpeg_version": "n8.1.2-52-g5a03dfa0f6-20260913",
+    "encoders_verified": true,
+    "encoders": ["libx264", "libx265", "aac(原生)"],
+    "verification": "本机 Linux 实测：tar.xz sha256 与 GitHub Release API 资产 digest 双重一致；./ffmpeg -version、-encoders 均执行通过；并用 testsrc+sine 完成 libx264+aac、libx265 真实编码冒烟测试（产物经 ffprobe 校验）",
+    "binary_sizes_bytes": {"ffmpeg": 171132360, "ffprobe": 170890632},
+    "license": "GPLv3（--enable-gpl --enable-version3）",
+    "notes": "首选源 johnvansickle.com/ffmpeg 本机不可自动化获取：该站对非浏览器请求返回 JS 反爬挑战页（约 7KB HTML，HTTP 200 冒充 tarball，浏览器 UA+Cookie 重放无效），故改用 ffmpeg.org 官方下载页『Linux 静态构建』当前唯一推荐源 BtbN/FFmpeg-Builds（github.com/BtbN/FFmpeg-Builds，交叉编译于 Ubuntu，ffmpeg.org/download.html 直接背书）。注意该资产为滚动重建（n8.1-latest 分支每日构建，sha256 会随重建变化），本文件记录的是 2026-09-14 实测批次；仓库内 packaging/engines/linux-amd64/ 已固化本次校验通过的 ffmpeg/ffprobe 二进制（合计约 326MB，后续可考虑 Git LFS 或发布产物托管）。configuration 含 --enable-libx264 --enable-libx265，原生 aac 编码器未被禁用。"
+  },
+  "linux-arm64": {
+    "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-linuxarm64-gpl-8.1.tar.xz",
+    "sha256_tarxz": "264ced97c4d6eb721ff9406b3cff41793182888aa2d8fbc69f8fee0d0de8a55d",
+    "ffmpeg_version": "8.1.2 分支（与 linux-amd64 同一 CI 批次的 aarch64 构建，版本串以 amd64 实测为准）",
+    "encoders_verified": false,
+    "encoders": ["libx264", "libx265", "aac(原生)（依同分支构建配置推断）"],
+    "verification": "未下载运行（x86_64 本机无法执行 aarch64）；sha256 取自 GitHub Release API 官方资产 digest（size 125963884）",
+    "license": "GPLv3（同 amd64）",
+    "notes": "与 linux-amd64 同源同分支（BtbN n8.1-latest 的 linuxarm64-gpl 资产），构建配置一致，libx264/libx265/原生 aac 齐备。接入时应在本机下载后核对 sha256 并跑一次冒烟测试。johnvansickle.com 亦提供 ffmpeg-release-arm64-static.tar.xz，但其站点反爬无法自动确认当前版本，且 ffmpeg.org 官方下载页已不再列出该站。"
+  },
+  "darwin-amd64": {
+    "url": "https://evermeet.cx/ffmpeg/getrelease/zip（ffmpeg-8.1.1.zip；7z 同版本）",
+    "url_ffprobe": "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip",
+    "ffmpeg_version": "8.1.1（release 线）；快照线当前 126504-g1b8a2b690b3",
+    "has_x265": true,
+    "verification": "官方 info API（https://evermeet.cx/ffmpeg/info/ffmpeg/release）明列外置库 x264 0.165.3223 与 x265 4.2+3-3f4120d21；GPG 签名校验：info API 返回的 download 项自带 .sig 签名 URL（如 ffmpeg-8.1.1.zip.sig）",
+    "verified": false,
+    "notes": "本机 Linux 无法运行验证，仅来源确认。重要更正：『evermeet 只有 libx264』是过时信息——站点自 ffmpeg 3.3.4/快照 86950 起内置 multi-bit x265（8/10/12bit），当前 release 与快照配置均含 --enable-libx264 --enable-libx265，满足 L8 的 x265 需求。仅 Intel x86_64 构建，要求 macOS 10.13+，是 ffmpeg.org 下载页 macOS 区块唯一推荐源。签名密钥惯用 0x476C4B611A660874，接入时请于官网核对指纹（本机直连 evermeet.cx 间歇超时，以上信息经其中转 info API 确认）。备选：osxexperts.net/ffmpeg80intel.zip（FFmpeg 8.0 Intel，页面公布 sha256 df3f1e3facdc1ae0ad0bd898cdfb072fbc9641bf47b11f172844525a05db8d11）。"
+  },
+  "darwin-arm64": {
+    "url": "https://www.osxexperts.net/ffmpeg9arm.zip（ffmpeg）",
+    "url_ffprobe": "https://www.osxexperts.net/ffprobe9arm.zip",
+    "ffmpeg_version": "FFmpeg 9.0（Apple Silicon / arm64）",
+    "has_x265": true,
+    "official_checksum": "页面按文件公布 SHA256：ffmpeg=591260c945d0eef150e3bf82b0ef988bd36a9cecc18ff05d6679617159f0a95e，ffprobe=e11c17e8200b3ee4c4c186d245e2b4053f01d56957336c1817fca0b997469106",
+    "verified": false,
+    "notes": "本机无法运行验证，仅来源确认。osxexperts.net 是当前提供 Apple Silicon 静态构建且公布逐文件 SHA256 的站点；其页面公开的 ARM64 编译脚本含 --enable-libx264 --enable-libx265（x265 为 8/10/12bit 多位深合体），但属人工核对的编译脚本而非运行时验证。运行前需 xattr -dr com.apple.quarantine 去隔离，Apple Silicon 需 ad-hoc 签名 codesign -s - <file>。注意站点标注『for educational purposes only』，商用分发前需法务确认；evermeet.cx 明确不做 Apple Silicon 原生构建（其 Intel 版可经 Rosetta 2 运行，作为弱备选）。若该源不可接受，macOS arm64 无带官方签名的成熟静态源，需自建（影响面：仅 L8 等级需要 x265，其余等级 x264+aac 即可，evermeet Intel 版+Rosetta 可临时兜底非 L8 等级）。"
+  },
+  "_research_date": "2026-09-14",
+  "_source_selection_note": "linux 侧最终源为 BtbN/FFmpeg-Builds（ffmpeg.org 官方下载页当前唯一推荐的 Linux 静态构建源）；首选源 johnvansickle.com 因反爬挑战无法自动化下载，仅作记录。darwin 侧 evermeet.cx（Intel，GPG 签名）+ osxexperts.net（Apple Silicon，页面 SHA256）均含 libx264+libx265+原生 aac。"
+}
