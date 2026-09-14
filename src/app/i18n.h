@@ -11,13 +11,19 @@
 
 #include <QPair>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 namespace one6s::i18n {
 
+// assets 目录候选(全程序唯一定义,spec/tiers/词条三处加载共用):
+// 开发态编译定义 ASSETS_DIR → 打包态 exe 上级 assets(AppImage usr/bin→usr/assets、
+// macOS Contents/MacOS→Contents/assets)→ 打包态 exe 同级 assets(Windows 便携 zip)。
+// QCoreApplication 未创建时(纯逻辑测试)只有编译定义候选。
+QStringList assetCandidates();
+
 // 加载两种语言的词条表并解析语言偏好。assets_dir 为空时用默认候选
-// (编译定义 ASSETS_DIR,再回退程序目录旁 assets/,与 spec 加载同策略)。
-// 幂等:重复调用会重新加载并重解析偏好。
+// (即 assetCandidates())。幂等:重复调用会重新加载并重解析偏好。
 void init(const QString& assets_dir = QString());
 
 // 查词条;缺失 → 返回 key 本身。未 init 时会先做一次默认路径的懒加载。

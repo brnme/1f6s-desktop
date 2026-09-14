@@ -72,7 +72,7 @@ void TestJobs::initTestCase() {
     if (engines_.ffmpeg.isEmpty() || engines_.ffprobe.isEmpty())
         QSKIP("ffmpeg/ffprobe 不可用,跳过 jobs 集成测试");
     QVERIFY(dir_.isValid());
-    spec_ = Spec::load(SPEC_DIR "/levels.json");
+    spec_ = Spec::load(QStringLiteral(SPEC_DIR "/levels.json"));
 
     // 合成 3s 测试视频:testsrc + sine,libx264 + aac。
     input_ = dir_.filePath(QStringLiteral("in.mp4"));

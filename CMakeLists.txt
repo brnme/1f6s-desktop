@@ -16,6 +16,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
 
+# MSVC:源码全 UTF-8(中文注释/文案),默认按本地代码页解码会报 C4819/乱码
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
+
 find_package(Qt6 6.2 REQUIRED COMPONENTS Widgets Network Test)
 # 注:本机 GL 只有运行库、缺 -dev 头文件/符号链接,find_package(Qt6) 需显式提示
 # (免装依赖的变通,见 git 提交记录):
@@ -42,12 +45,20 @@ add_executable(1f6s-desktop
 )
 
 target_include_directories(1f6s-desktop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-# 开发态 assets 路径;打包态运行时回退 applicationDirPath()/../assets(见 src/main.cpp)。
+# 开发态 assets 路径;打包态运行时回退见 i18n::assetCandidates(src/app/i18n.cpp)。
 # APP_VERSION:项目版本,关于页展示(i18n.cpp 与 aboutpage.cpp 也读取该定义)。
 target_compile_definitions(1f6s-desktop PRIVATE
     ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets"
     APP_VERSION="${PROJECT_VERSION}")
 target_link_libraries(1f6s-desktop PRIVATE Qt6::Widgets Qt6::Network core_lib jobs_lib)
+
+# Windows:exe 嵌入图标与版本资源;WIN32_EXECUTABLE 用 GUI 子系统(不弹控制台黑窗)
+if(WIN32)
+    enable_language(RC)
+    configure_file(packaging/1f6s-desktop.rc.in ${CMAKE_CURRENT_BINARY_DIR}/1f6s-desktop.rc @ONLY)
+    target_sources(1f6s-desktop PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/1f6s-desktop.rc)
+    set_target_properties(1f6s-desktop PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 enable_testing()
 add_subdirectory(tests)

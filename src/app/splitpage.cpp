@@ -37,15 +37,8 @@ QString videoFilter() {
            one6s::i18n::t(QStringLiteral("compress.filter.all"));
 }
 
-// assets 目录:开发态用编译定义(根 CMakeLists 注入),打包态回退程序目录旁。
-QStringList assetCandidates() {
-    QStringList out;
-#ifdef ASSETS_DIR
-    out << QString::fromLocal8Bit(ASSETS_DIR);
-#endif
-    out << QCoreApplication::applicationDirPath() + QStringLiteral("/../assets");
-    return out;
-}
+// assets 目录候选集中在 one6s::i18n::assetCandidates(见 app/i18n.cpp),
+// spec/tiers/词条三处加载共用,此处不再各留一份。
 
 QString mibText(double bytes) {
     return QStringLiteral("%1 MB").arg(bytes / 1048576.0, 0, 'f', 1);
@@ -203,7 +196,7 @@ SplitPage::SplitPage(one6s::jobs::EnginePaths engines, one6s::jobs::JobModel* mo
 bool SplitPage::loadTierConfig(QString& error) {
     QString tiers_path;
     QString precheck_path;
-    for (const QString& base : assetCandidates()) {
+    for (const QString& base : one6s::i18n::assetCandidates()) {
         const QString t = base + QStringLiteral("/spec/tiers_limits.json");
         const QString p = base + QStringLiteral("/spec/precheck_factors.json");
         if (QFileInfo::exists(t) && QFileInfo::exists(p)) {
@@ -233,7 +226,7 @@ bool SplitPage::loadTierConfig(QString& error) {
         return false;
     }
     try {
-        precheck_ = one6s::Precheck::load(precheck_path.toStdString());
+        precheck_ = one6s::Precheck::load(precheck_path);
     } catch (const std::exception& e) {
         error = QString::fromUtf8(e.what());
         return false;

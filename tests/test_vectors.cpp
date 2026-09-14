@@ -82,7 +82,7 @@ void TestVectors::initTestCase() {
     QVERIFY2(in.good(), "cannot open " VECTORS_JSON);
     in >> m_doc;
 
-    m_spec = Spec::load(SPEC_DIR "/levels.json");
+    m_spec = Spec::load(QStringLiteral(SPEC_DIR "/levels.json"));
 
     QCOMPARE(m_doc["case_count"].get<int>(), static_cast<int>(m_doc["cases"].size()));
     // M1 契约:黄金向量 261 case(189 commands + 24 error + 48 estimate)。

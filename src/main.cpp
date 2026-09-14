@@ -98,20 +98,14 @@ QStatusBar { background: #232529; color: #9aa0a8; }
 )");
 }
 
-// assets 路径解析:开发态用编译定义 ASSETS_DIR(指向仓库 assets/,由 CMake 注入);
-// 打包态回退 applicationDirPath()/../assets。两态都实现,先到先得。
+// assets 基准目录候选集中在 one6s::i18n::assetCandidates(开发态编译定义
+// ASSETS_DIR + 打包态两种布局),spec/tiers/词条三处加载共用。
 bool loadSpec(one6s::Spec& out, QString& error) {
-    QStringList candidates;
-#ifdef ASSETS_DIR
-    candidates << QString::fromLocal8Bit(ASSETS_DIR);
-#endif
-    candidates << QCoreApplication::applicationDirPath()
-                        + QStringLiteral("/../assets");
-    for (const QString& base : candidates) {
+    for (const QString& base : one6s::i18n::assetCandidates()) {
         const QString levels = base + QStringLiteral("/spec/levels.json");
         if (!QFileInfo::exists(levels)) continue;
         try {
-            out = one6s::Spec::load(levels.toStdString());
+            out = one6s::Spec::load(levels);
             return true;
         } catch (const std::exception& e) {
             error = QString::fromUtf8(e.what());

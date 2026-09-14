@@ -15,6 +15,8 @@
 
 #include <nlohmann/json.hpp>
 
+class QString;  // 前置声明:load(QString) 重载用,实现在 .cpp(本头保持不引 Qt)
+
 namespace one6s {
 
 // 与网站 ValueError 对应;message 必须与 params.py 逐字一致(对拍依赖)。
@@ -54,7 +56,9 @@ struct Spec {
     const Level& level(const std::string& id) const;
 
     static Spec parse(const nlohmann::json& j);
-    static Spec load(const std::string& path);  // 路径由调用方传入
+    // QFile 按宽字符路径打开:Windows 非 ASCII 安装路径(本地代码页之外的
+    // 用户名/目录)也能读,macOS/Linux 等价。路径由调用方传入。
+    static Spec load(const QString& path);
 };
 
 // 微调白名单(params.py ALLOWED_*;纯枚举允许写死,levels.json 无此表)。

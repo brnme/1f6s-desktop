@@ -34,18 +34,6 @@ bool& initialized() {
     return ok;
 }
 
-// assets 目录候选:开发态编译定义 ASSETS_DIR(根 CMakeLists 注入),
-// 打包态回退程序目录旁 assets/。与 spec/tiers 加载同策略。
-QStringList assetCandidates() {
-    QStringList out;
-#ifdef ASSETS_DIR
-    out << QString::fromLocal8Bit(ASSETS_DIR);
-#endif
-    if (QCoreApplication::instance())
-        out << QCoreApplication::applicationDirPath() + QStringLiteral("/../assets");
-    return out;
-}
-
 // 从 <dir>/i18n/<lang>.json 读词条;文件缺失/坏 JSON → 空表(t() 回退 key)。
 QMap<QString, QString> loadTable(const QString& dir, const QString& lang) {
     QFile f(dir + QStringLiteral("/i18n/%1.json").arg(lang));
@@ -59,6 +47,22 @@ QMap<QString, QString> loadTable(const QString& dir, const QString& lang) {
 }
 
 }  // namespace
+
+QStringList assetCandidates() {
+    QStringList out;
+#ifdef ASSETS_DIR
+    out << QString::fromLocal8Bit(ASSETS_DIR);
+#endif
+    if (QCoreApplication::instance()) {
+        // 打包态两种布局都列上,先到先得:
+        //   上级 assets —— AppImage(usr/bin→usr/assets)、macOS(Contents/MacOS→Contents/assets);
+        //   同级 assets —— Windows 便携 zip(exe 与 assets/ 并列,用户解压即双击)。
+        const QString exe_dir = QCoreApplication::applicationDirPath();
+        out << exe_dir + QStringLiteral("/../assets")
+            << exe_dir + QStringLiteral("/assets");
+    }
+    return out;
+}
 
 void init(const QString& assets_dir) {
     QStringList candidates;

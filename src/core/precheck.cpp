@@ -2,7 +2,8 @@
 #include "core/precheck.h"
 
 #include <cctype>
-#include <fstream>
+
+#include <QFile>
 
 #include "core/spec.h"  // SpecError(加载失败复用同一异常类型)
 
@@ -25,12 +26,14 @@ Precheck Precheck::parse(const nlohmann::json& j) {
     return p;
 }
 
-Precheck Precheck::load(const std::string& path) {
-    std::ifstream in(path);
-    if (!in) throw SpecError("cannot open precheck_factors.json: " + path);
+// 同 Spec::load(QString):QFile 按宽字符路径打开,Windows 非 ASCII 安装路径安全。
+Precheck Precheck::load(const QString& path) {
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        throw SpecError("cannot open precheck_factors.json: " + path.toStdString());
     nlohmann::json j;
     try {
-        in >> j;
+        j = nlohmann::json::parse(f.readAll().toStdString());
     } catch (const std::exception& e) {
         throw SpecError(std::string("precheck_factors.json parse error: ") + e.what());
     }

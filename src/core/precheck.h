@@ -8,6 +8,8 @@
 
 #include <nlohmann/json.hpp>
 
+class QString;  // 前置声明:load(QString) 重载用,实现在 .cpp(本头保持不引 Qt)
+
 namespace one6s {
 
 struct Precheck {
@@ -17,7 +19,8 @@ struct Precheck {
     std::map<std::string, std::map<std::string, double>> factors;
 
     static Precheck parse(const nlohmann::json& j);
-    static Precheck load(const std::string& path);  // 路径由调用方传入
+    // QFile 读取(Windows 非 ASCII 路径安全),语义同 Spec::load。
+    static Precheck load(const QString& path);
 
     // 机器秒/输入秒:分辨率桶(按 max(w,h))× 编码族(h264/hevc/other)。
     // 回退链与 compressor.py:53-68 一致:缺族 → factors["other"];

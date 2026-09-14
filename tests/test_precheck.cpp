@@ -21,7 +21,7 @@ private slots:
 };
 
 void TestPrecheck::loadRealFactors() {
-    const Precheck pc = Precheck::load(SPEC_DIR "/precheck_factors.json");
+    const Precheck pc = Precheck::load(QStringLiteral(SPEC_DIR "/precheck_factors.json"));
     QVERIFY(pc.enabled);
     QVERIFY2(std::fabs(pc.margin - 0.8) < 1e-12,
              qPrintable(QStringLiteral("margin=%1").arg(pc.margin)));
@@ -42,7 +42,7 @@ void TestPrecheck::loadRealFactors() {
 }
 
 void TestPrecheck::bucketBoundaries() {
-    const Precheck pc = Precheck::load(SPEC_DIR "/precheck_factors.json");
+    const Precheck pc = Precheck::load(QStringLiteral(SPEC_DIR "/precheck_factors.json"));
     QCOMPARE(pc.factor("h264", 1280, 720), 0.096);   // 1280 → p720
     QCOMPARE(pc.factor("h264", 1281, 1281), 0.118);  // 1281 → p1080
     QCOMPARE(pc.factor("h264", 1920, 1080), 0.118);
@@ -53,7 +53,7 @@ void TestPrecheck::bucketBoundaries() {
 }
 
 void TestPrecheck::familyNormalization() {
-    const Precheck pc = Precheck::load(SPEC_DIR "/precheck_factors.json");
+    const Precheck pc = Precheck::load(QStringLiteral(SPEC_DIR "/precheck_factors.json"));
     QCOMPARE(pc.factor("H264", 1280, 720), 0.096);   // 大小写不敏感
     QCOMPARE(pc.factor("HEVC", 1280, 720), 0.15);
     QCOMPARE(pc.factor("h264 ", 1280, 720), 0.23);   // 带空格视为未知 → other

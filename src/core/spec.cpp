@@ -3,7 +3,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
+
+#include <QFile>
 
 namespace one6s {
 
@@ -55,12 +56,15 @@ Spec Spec::parse(const nlohmann::json& j) {
     return s;
 }
 
-Spec Spec::load(const std::string& path) {
-    std::ifstream in(path);
-    if (!in) throw SpecError("cannot open levels.json: " + path);
+// QFile 读取:Windows 上 QFile 按宽字符路径打开,用户把便携包解压到本地
+// 代码页之外的路径(越南语/日文用户名等)也能读;macOS/Linux 等价。
+Spec Spec::load(const QString& path) {
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        throw SpecError("cannot open levels.json: " + path.toStdString());
     nlohmann::json j;
     try {
-        in >> j;
+        j = nlohmann::json::parse(f.readAll().toStdString());
     } catch (const std::exception& e) {
         throw SpecError(std::string("levels.json parse error: ") + e.what());
     }

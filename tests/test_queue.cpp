@@ -56,7 +56,7 @@ void TestQueue::initTestCase() {
     if (engines_.ffmpeg.isEmpty() || engines_.ffprobe.isEmpty())
         QSKIP("ffmpeg/ffprobe 不可用,跳过队列集成测试");
     QVERIFY(dir_.isValid());
-    spec_ = Spec::load(SPEC_DIR "/levels.json");
+    spec_ = Spec::load(QStringLiteral(SPEC_DIR "/levels.json"));
 
     input1_ = dir_.filePath(QStringLiteral("in1.mp4"));
     input2_ = dir_.filePath(QStringLiteral("in2.mp4"));

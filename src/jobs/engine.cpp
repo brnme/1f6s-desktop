@@ -9,9 +9,15 @@
 namespace one6s::jobs {
 namespace {
 
-// 引擎随包分发的文件名(Linux/macOS 同名;打包布局见 packaging/README.md)。
+// 引擎随包分发的文件名(Linux/macOS 同名,Windows 带 .exe 后缀——
+// findBesideApp 的 QFileInfo::exists 不认无后缀文件;打包布局见 packaging/README.md)。
+#ifdef Q_OS_WIN
+constexpr const char* kFfmpegName = "ffmpeg.exe";
+constexpr const char* kFfprobeName = "ffprobe.exe";
+#else
 constexpr const char* kFfmpegName = "ffmpeg";
 constexpr const char* kFfprobeName = "ffprobe";
+#endif
 
 QString findBesideApp(const char* name) {
     const QString dir = QCoreApplication::applicationDirPath();
