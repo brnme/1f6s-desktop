@@ -53,9 +53,9 @@
     "tag": "autobuild-2026-09-14-13-17",
     "sha256_zip": "f42dca81bdcce7ccab00bde91ceceb96685beab97c42a77c003c90771b47eb17",
     "ffmpeg_version": "n8.1.2-52-g5a03dfa0f6（BtbN win64-gpl 静态构建；zip 布局 <顶层>/bin/{ffmpeg,ffprobe}.exe，附带顶层 LICENSE.txt）",
-    "encoders_verified": false,
+    "encoders_verified": true,
     "encoders": ["libx264", "libx265", "aac"],
-    "verification": "本机下载实测（2026-09-14）：zip sha256 与 GitHub Release API digest 相符；编码器断言由 CI windows job 每趟实跑（先捕获 -encoders 输出再 grep，防 SIGPIPE）；本机 Linux 无法运行 .exe，首个 CI 绿跑后将 encoders_verified 改为 true",
+    "verification": "CI windows runner 实跑（2026-09-14，run 34859895943 全绿）：zip sha256 断言、-encoders 逐词断言 libx264/libx265/aac、8/8 ctest（含四个真转码测试）、打包产物 offscreen 冒烟全部通过；本机 Linux 已另对 zip 做 sha256 独立复核。随包 doc/engines-windows.sha256 记录两个 exe 的指纹",
     "binary_sizes_bytes": {"ffmpeg.exe": 162880512, "ffprobe.exe": 162675712},
     "license": "GPLv3（win64-gpl 构建 = --enable-gpl；zip 顶层 LICENSE.txt 随包分发）",
     "notes": "钉 autobuild 日期 tag 而非 latest（latest 资产批次滚动，sha256 会漂移）；与 linux 备选源同版本线 n8.1.2-52-g5a03dfa0f6。Windows 无 johnvansickle/evermeet 等价物，BtbN 即 ffmpeg.org 官方下载页 Windows 区推荐源。目标基线 Windows 10+ x64；Win7 兼容未验证，下载页不声明。"
