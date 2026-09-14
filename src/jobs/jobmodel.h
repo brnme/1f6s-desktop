@@ -37,6 +37,16 @@ enum class JobKind { Compress, Split };
 
 QString jobStateName(JobState state);  // "queued"/"running"/"done"/"cancelled"/"failed"
 
+// 压缩任务的运行时选项(设置页 M4)。默认值全部等于「忠实网站命令」:
+// threadLimit=0 不插 token、presetOverride 空 不改 -preset、lowerPriority=true
+// 是 M2 起的既有行为。前两项是用户主动偏离(AGENTS.md 有意偏离节 2/3 条),
+// 只影响新入队的任务;黄金向量对拍走 core::encode::buildCommands,不经过这里。
+struct RuntimeOptions {
+    bool lowerPriority = true;   // 启动后 POSIX nice 10(FfmpegJobConfig 同名项)
+    int threadLimit = 0;         // 0=不限;>0 时每条命令最后一个 token 前插 "-threads N"
+    QString presetOverride;      // 空=忠实 spec;非空(veryfast/faster/medium)替换 "-preset" 的值
+};
+
 struct JobRecord {
     quint64 id = 0;
     JobKind kind = JobKind::Compress;
@@ -66,6 +76,9 @@ public:
     void setSpec(one6s::Spec spec) { spec_ = std::move(spec); }
     void setEngines(EnginePaths engines) { engines_ = engines; }
     const EnginePaths& engines() const { return engines_; }
+    // 运行时选项(设置页可随时更新;对之后启动的任务生效,进行中的不动)。
+    void setRuntimeOptions(RuntimeOptions opts) { opts_ = std::move(opts); }
+    const RuntimeOptions& runtimeOptions() const { return opts_; }
 
     // —— 入队 ——
     // compress 任务:duration_s / has_audio 由调用方先 probe 得到。
@@ -104,6 +117,9 @@ signals:
 
 private:
     void startNext();
+    // 用户主动偏离(AGENTS.md 有意偏离 2/3 条)统一在此落地:对单条命令
+    // 替换 "-preset" 取值、在最后一个 token 前插 "-threads N";默认配置下两者皆空转。
+    void applyRuntimeOptions(QStringList& cmd) const;
     void finishActive(JobState state, const QString& error);
     // deleteLater + release:禁止在执行器自己的 finished 槽里 delete 发送者。
     void discardActive();
@@ -113,6 +129,7 @@ private:
 
     one6s::Spec spec_;
     EnginePaths engines_;
+    RuntimeOptions opts_;
     std::map<quint64, JobRecord> records_;
     std::deque<quint64> queue_;   // 等待运行的 FIFO(仅存排队中的 id)
     quint64 activeId_ = 0;        // 0 = 无

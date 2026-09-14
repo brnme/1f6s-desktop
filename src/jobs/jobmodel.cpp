@@ -18,6 +18,22 @@ QString jobStateName(JobState state) {
     return QStringLiteral("unknown");
 }
 
+void JobModel::applyRuntimeOptions(QStringList& cmd) const {
+    // 预设速度:替换 "-preset" 的取值(用户主动偏离,AGENTS.md 有意偏离 3;
+    // 默认 presetOverride 为空 → 不触碰)。命令里至多一个 "-preset"。
+    if (!opts_.presetOverride.isEmpty()) {
+        const int idx = cmd.indexOf(QStringLiteral("-preset"));
+        if (idx >= 0 && idx + 1 < cmd.size()) cmd[idx + 1] = opts_.presetOverride;
+    }
+    // 线程上限:最后一个 token(输出文件)前插 "-threads N"(用户主动偏离,
+    // AGENTS.md 有意偏离 2;默认 0 → 不插)。执行器随后仍会在最后 token 前
+    // 插 -progress 三 token,顺序不受影响。
+    if (opts_.threadLimit > 0 && cmd.size() >= 2) {
+        cmd.insert(cmd.size() - 1, QStringLiteral("-threads"));
+        cmd.insert(cmd.size() - 1, QString::number(opts_.threadLimit));
+    }
+}
+
 JobModel::JobModel(QObject* parent) : QObject(parent) {}
 
 quint64 JobModel::enqueue(const QString& input_path, const QString& output_path,
@@ -201,11 +217,13 @@ void JobModel::startNext() {
         QStringList l;
         l.reserve(static_cast<qsizetype>(tokens.size()));
         for (const auto& t : tokens) l.append(QString::fromStdString(t));
+        applyRuntimeOptions(l);  // 默认配置空转,命令与黄金向量一致
         cfg.commands.append(l);
     }
     cfg.durationS = rec.durationS;
     cfg.twopass = rec.eff.twopass;
     cfg.outputPath = rec.outputPath;
+    cfg.lowerPriority = opts_.lowerPriority;
 
     activeId_ = id;
     rec.state = JobState::Running;

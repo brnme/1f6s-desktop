@@ -36,11 +36,18 @@ gen_vectors.py,并让 C++ 实现对拍(vectors.json 全部 case)通过后才算�
 L7 无 target_mb 一律报错;JSON 整数 `target_mb:0` 被静默丢弃(falsy),
 字符串 `"0"` 才触发越界错误——oracle 记录的是网站真实行为。
 
-## 有意偏离(唯一)
+## 有意偏离
 
-C++ 端 2-pass 的 pass1 输出用 `-f null -` 而非网站端的 `-f mp4 /dev/null`
-(前者不落盘更稳;两遍统计等价)。对拍时 pass1 尾部三 token
-(`-f`,`mp4`,`DEVNULL`)按等价规则归一后再比较,其余 token 必须逐一对齐。
+1. C++ 端 2-pass 的 pass1 输出用 `-f null -` 而非网站端的 `-f mp4 /dev/null`
+   (前者不落盘更稳;两遍统计等价)。对拍时 pass1 尾部三 token
+   (`-f`,`mp4`,`DEVNULL`)按等价规则归一后再比较,其余 token 必须逐一对齐。
+2. M4 起设置页提供「线程上限」(默认 0=不限):用户设为 >0 时,每条压缩命令
+   在最后一个 token 前插入 `-threads N`(两遍作业两条都插)。这是用户主动
+   偏离网站命令——默认 0 时不触碰命令,产出与黄金向量逐 token 一致
+   (test_vectors 是回归闸门)。
+3. M4 起设置页提供「预设速度」(默认 slow=忠实倡议):用户选 veryfast/faster/
+   medium 时替换命令中 `-preset` 的取值。同为用户主动偏离,UI 明示
+   「转码更快但输出体积更大」;默认 slow 不触碰命令。
 
 ## 规范同步
 

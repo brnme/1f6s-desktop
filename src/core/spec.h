@@ -40,6 +40,7 @@ struct Level {
 
 // levels.json 整体:等级表 + encode 所需的 spec 级常量(preset/pix_fmt/音频)。
 struct Spec {
+    std::string version;        // levels.json 顶层 "version"(关于页展示/官网对版本用)
     std::map<std::string, Level> levels;
     std::string preset = "slow";
     std::string pixel_format = "yuv420p";

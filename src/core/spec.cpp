@@ -26,6 +26,7 @@ const Level& Spec::level(const std::string& id) const {
 Spec Spec::parse(const nlohmann::json& j) {
     if (!j.is_object()) throw SpecError("levels.json: root must be an object");
     Spec s;
+    s.version = j.value("version", "");  // 关于页展示/官网 /api/levels 对版本用
     const nlohmann::json defs = j.value("defaults", nlohmann::json::object());
     s.default_level = defs.value("level", "L4");
     s.output_suffix = defs.value("output_suffix", "_1f6s.mp4");

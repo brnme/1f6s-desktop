@@ -1,5 +1,7 @@
-// 主窗口(M3):双页布局 —— 「压缩」队列页 + 「分割」向导页,共用同一个
-// JobModel 任务队列(FIFO 串行)。本阶段文案中文硬编码,M4 统一换 i18n key。
+// 主窗口(M4):四页布局 —— 「压缩」队列页 +「分割」向导页 +「设置」+
+// 「关于」,共用同一个 JobModel 任务队列(FIFO 串行)。文案走 assets/i18n
+// (one6s::i18n::t)。设置页的运行时选项变更即时灌进 JobModel(对之后启动
+// 的任务生效);关于页发现官网规范更新时同步状态栏提示。
 #pragma once
 
 #include <QMainWindow>
@@ -23,6 +25,6 @@ private:
 
     one6s::Spec spec_;
     one6s::jobs::EnginePaths engines_;
-    one6s::jobs::JobModel model_;  // 两页共用;声明在页指针之前(先析构页)
+    one6s::jobs::JobModel model_;  // 各页共用;声明在页指针之前(先析构页)
     QLabel* banner_ = nullptr;     // 引擎/编码器自检失败提示;正常时隐藏
 };

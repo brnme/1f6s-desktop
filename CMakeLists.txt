@@ -9,7 +9,7 @@
 #
 # 生产/CI 的 CMAKE_PREFIX_PATH 由预设工具链或 -D 覆盖,勿写死在代码里。
 cmake_minimum_required(VERSION 3.16)
-project(1f6s-desktop LANGUAGES CXX)
+project(1f6s-desktop VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,15 +33,20 @@ add_subdirectory(src/jobs)
 
 add_executable(1f6s-desktop
     src/main.cpp
+    src/app/i18n.cpp
     src/app/mainwindow.cpp
     src/app/compresspage.cpp
     src/app/splitpage.cpp
+    src/app/settingspage.cpp
+    src/app/aboutpage.cpp
 )
 
 target_include_directories(1f6s-desktop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # 开发态 assets 路径;打包态运行时回退 applicationDirPath()/../assets(见 src/main.cpp)。
+# APP_VERSION:项目版本,关于页展示(i18n.cpp 与 aboutpage.cpp 也读取该定义)。
 target_compile_definitions(1f6s-desktop PRIVATE
-    ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
+    ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    APP_VERSION="${PROJECT_VERSION}")
 target_link_libraries(1f6s-desktop PRIVATE Qt6::Widgets Qt6::Network core_lib jobs_lib)
 
 enable_testing()

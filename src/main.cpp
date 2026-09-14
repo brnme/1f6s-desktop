@@ -1,18 +1,25 @@
-// 1f6s-desktop 入口(M2):Fusion 暗色主题 + 规范加载 + 主窗口接线。
+// 1f6s-desktop 入口(M4):Fusion 暗色主题 + 规范加载 + i18n + 四页主窗口。
 #include <QApplication>
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QPalette>
+#include <QSettings>
 #include <QTimer>
 
+#include "app/i18n.h"
 #include "app/mainwindow.h"
+#include "app/settingspage.h"
 #include "core/spec.h"
 #include "jobs/engine.h"
 
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
+
 namespace {
 
-// 暗色 QPalette(Fusion 基调,深灰配色;M4 精修)。
+// 暗色 QPalette(Fusion 基调,深灰配色)。
 QPalette darkPalette() {
     QPalette p;
     const QColor window(0x1e, 0x1f, 0x22);
@@ -40,6 +47,57 @@ QPalette darkPalette() {
     return p;
 }
 
+// M4 精修:在 QPalette 之上补 QSS,把进度条/选项卡/表格观感调顺
+// (圆角、分区描边、表头、斑马纹;M5 后再迭代)。
+QString darkQss() {
+    return QStringLiteral(R"(
+QProgressBar {
+    background: #22242a; border: 1px solid #3a3d42; border-radius: 4px;
+    color: #cfd2d6; text-align: center; min-height: 14px;
+}
+QProgressBar::chunk { background: #3d6b9e; border-radius: 3px; }
+QTabWidget::pane {
+    border: 1px solid #35383d; border-radius: 3px; top: -1px;
+    background: #232529;
+}
+QTabBar::tab {
+    background: transparent; color: #9aa0a8; padding: 6px 16px;
+    border: 1px solid transparent; border-bottom: none;
+    border-top-left-radius: 3px; border-top-right-radius: 3px;
+}
+QTabBar::tab:selected { background: #232529; color: #e8eaec; border-color: #35383d; }
+QTabBar::tab:hover:!selected { color: #c3c7cc; }
+QTableWidget, QTableView {
+    background: #232529; alternate-background-color: #272a2f;
+    selection-background-color: #3d6b9e; selection-color: #ffffff;
+    border: 1px solid #35383d; border-radius: 3px; gridline-color: transparent;
+}
+QHeaderView::section {
+    background: #2a2d31; color: #9aa0a8; border: none;
+    border-bottom: 1px solid #35383d; padding: 5px 8px;
+}
+QGroupBox {
+    border: 1px solid #35383d; border-radius: 4px; margin-top: 10px;
+    padding-top: 6px;
+}
+QGroupBox::title { subcontrol-origin: margin; left: 10px; color: #9aa0a8; }
+QLineEdit, QComboBox, QSpinBox {
+    background: #22242a; border: 1px solid #3a3d42; border-radius: 3px;
+    padding: 3px 6px; selection-background-color: #3d6b9e;
+}
+QComboBox::drop-down { border: none; width: 18px; }
+QComboBox QAbstractItemView {
+    background: #2a2d31; border: 1px solid #3a3d42;
+    selection-background-color: #3d6b9e;
+}
+QPushButton { background: #2f3338; border: 1px solid #3a3d42; border-radius: 3px; padding: 5px 12px; }
+QPushButton:hover { background: #373c42; }
+QPushButton:pressed { background: #2a2e33; }
+QPushButton:disabled { color: #6a6f76; background: #282a2e; }
+QStatusBar { background: #232529; color: #9aa0a8; }
+)");
+}
+
 // assets 路径解析:开发态用编译定义 ASSETS_DIR(指向仓库 assets/,由 CMake 注入);
 // 打包态回退 applicationDirPath()/../assets。两态都实现,先到先得。
 bool loadSpec(one6s::Spec& out, QString& error) {
@@ -60,8 +118,20 @@ bool loadSpec(one6s::Spec& out, QString& error) {
             return false;
         }
     }
-    error = QStringLiteral("找不到规范文件 assets/spec/levels.json");
+    error = one6s::i18n::t(QStringLiteral("app.error.spec_missing"));
     return false;
+}
+
+// 设置页自定义引擎路径(高级项):可执行才覆盖,否则保留定位器结果。
+void applyEngineOverrides(one6s::jobs::EnginePaths& engines) {
+    const settings::EnginePathOverrides ov = settings::loadEnginePathOverrides();
+    const auto usable = [](const QString& p) {
+        if (p.isEmpty()) return false;
+        const QFileInfo info(p);
+        return info.isFile() && info.isExecutable();
+    };
+    if (usable(ov.ffmpeg)) engines.ffmpeg = ov.ffmpeg;
+    if (usable(ov.ffprobe)) engines.ffprobe = ov.ffprobe;
 }
 
 }  // namespace
@@ -70,18 +140,28 @@ int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("1f6s-desktop"));
     app.setOrganizationName(QStringLiteral("1f6s"));
+    app.setApplicationVersion(QStringLiteral(APP_VERSION));
     app.setStyle(QStringLiteral("Fusion"));
     app.setPalette(darkPalette());
+    app.setStyleSheet(darkQss());
+
+    // i18n:org/app 名先设好(QSettings 读语言偏好),再加载词条。
+    one6s::i18n::init();
 
     one6s::Spec spec;
     QString spec_error;
     if (!loadSpec(spec, spec_error)) {
-        QMessageBox::critical(nullptr, QStringLiteral("1f6s 桌面压缩"),
-                              QStringLiteral("规范加载失败:%1").arg(spec_error));
+        QMessageBox::critical(
+            nullptr, one6s::i18n::t(QStringLiteral("app.title")),
+            one6s::i18n::t(QStringLiteral("app.error.spec_load"),
+                           {{QStringLiteral("error"), spec_error}}));
         return 1;
     }
 
-    MainWindow win(spec, one6s::jobs::locateEngines());
+    one6s::jobs::EnginePaths engines = one6s::jobs::locateEngines();
+    applyEngineOverrides(engines);
+
+    MainWindow win(spec, engines);
     win.resize(880, 600);
     win.show();
 

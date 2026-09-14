@@ -43,3 +43,15 @@ add_executable(test_queue test_queue.cpp)
 target_link_libraries(test_queue PRIVATE jobs_lib Qt6::Test)
 target_compile_definitions(test_queue PRIVATE SPEC_DIR="${SPEC_DIR}")
 add_test(NAME test_queue COMMAND test_queue)
+
+# --- M4 i18n(两语 parity/关键 key 抽查/desktop 无孤立项/t() 回退) ---
+add_executable(test_i18n
+    test_i18n.cpp
+    ../src/app/i18n.cpp)   # 直接编入被测单元(纯 QtCore,无需主程序)
+target_include_directories(test_i18n PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(test_i18n PRIVATE Qt6::Test)
+target_compile_definitions(test_i18n PRIVATE
+    ASSETS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+    APP_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../src/app"
+    APP_MAIN_SRC="${CMAKE_CURRENT_SOURCE_DIR}/../src/main.cpp")
+add_test(NAME test_i18n COMMAND test_i18n)

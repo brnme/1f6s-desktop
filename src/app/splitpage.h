@@ -1,7 +1,7 @@
 // splitpage.h — 「分割」页:向导式流复制分割(选文件 → 档位 → 预览 → 执行
 // → 结果)。档位上限来自 assets/spec/tiers_limits.json(sync_spec.sh 同步副本,
 // 不硬编码);预检因子来自 assets/spec/precheck_factors.json。
-// 文案中文硬编码,M4 统一换 i18n key。
+// 文案走 assets/i18n(M4 起,one6s::i18n::t 查询)。
 #pragma once
 
 #include <QMap>
