@@ -4,6 +4,8 @@
 产出(写入 --outdir):
   1f6s-desktop.svg            矢量源(深色圆角方块 + "1f6s" 字样)
   1f6s-desktop-{128,256}.png  位图(手写 PNG 编码器 + 5x7 位图字体放大)
+  1f6s-desktop.ico            Windows 图标(PNG-in-ICO,256/128/48/32/16 五档;
+                              48 及以上带文字,更小档位退化为纯圆角方块)
 
 设计基调与主程序暗色 UI(main.cpp darkPalette)一致:
   背景 #1e1f22 圆角方块,前景 #cfd2d6 文字,点缀 #3d6b9e 高亮条。
@@ -55,8 +57,12 @@ def rounded_rect_mask(w, h, radius):
     return mask
 
 
-def render(size=256):
-    """渲染 size×size RGBA 像素(暗色圆角方块 + 居中 1f6s + 底部高亮条)。"""
+def render(size=256, text=True):
+    """渲染 size×size RGBA 像素(暗色圆角方块 + 居中 1f6s + 底部高亮条)。
+
+    text=False 时退化为纯圆角方块底色(16/32 小档文字放不下且不可辨,
+    保品牌底色即可);位图字体按整数倍放大 + 最近邻采样,任意尺寸可用。
+    """
     bm = text_bitmap("1f6s")
     th = len(bm)          # 7
     tw = len(bm[0])       # 23
@@ -71,6 +77,8 @@ def render(size=256):
 
     mask = rounded_rect_mask(size, size, int(size * 0.22))
     px = [[BG + (mask[y][x],) for x in range(size)] for y in range(size)]
+    if not text:
+        return px
     for y in range(h_px):
         gy = y // scale
         for x in range(w_px):
@@ -86,7 +94,8 @@ def render(size=256):
     return px
 
 
-def write_png(path, px):
+def png_bytes(px):
+    """RGBA 像素 → PNG 字节流(手写编码器:每行 filter 0 + zlib 压缩)。"""
     h, w = len(px), len(px[0])
     raw = b"".join(
         b"\x00" + b"".join(bytes(p) for p in row) for row in px
@@ -94,12 +103,38 @@ def write_png(path, px):
     def chunk(tag, data):
         c = tag + data
         return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c))
-    png = (b"\x89PNG\r\n\x1a\n"
-           + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
-           + chunk(b"IDAT", zlib.compress(raw, 9))
-           + chunk(b"IEND", b""))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9))
+            + chunk(b"IEND", b""))
+
+
+def write_png(path, px):
     with open(path, "wb") as f:
-        f.write(png)
+        f.write(png_bytes(px))
+
+
+# ICO 档位(Windows 资源用);48 及以上必须带文字,更小档位退化为纯圆角方块。
+ICO_SIZES = (256, 128, 48, 32, 16)
+ICO_TEXT_MIN = 48
+
+
+def write_ico(path, sizes=ICO_SIZES):
+    """打包 PNG-in-ICO(Vista+ 原生支持,每档即一个完整 PNG blob)。
+
+    结构:6 字节 ICONDIR 头 + 每档 16 字节 ICONDIRENTRY + 顺序排列的 PNG 数据;
+    entry 宽/高字段 0 表示 256,位深固定记 32(实际色彩由内嵌 PNG 承载)。
+    """
+    blobs = [png_bytes(render(s, text=(s >= ICO_TEXT_MIN))) for s in sizes]
+    head = struct.pack("<HHH", 0, 1, len(sizes))  # reserved=0, type=1(图标), 档数
+    entries, offset = b"", len(head) + 16 * len(sizes)
+    for size, blob in zip(sizes, blobs):
+        dim = 0 if size >= 256 else size
+        entries += struct.pack("<BBBBHHII",
+                               dim, dim, 0, 0, 1, 32, len(blob), offset)
+        offset += len(blob)
+    with open(path, "wb") as f:
+        f.write(head + entries + b"".join(blobs))
 
 
 SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
@@ -124,6 +159,7 @@ def main():
         f.write(SVG)
     for size in (128, 256):
         write_png(os.path.join(args.outdir, f"1f6s-desktop-{size}.png"), render(size))
+    write_ico(os.path.join(args.outdir, "1f6s-desktop.ico"))
     print("icon written to", args.outdir)
 
 

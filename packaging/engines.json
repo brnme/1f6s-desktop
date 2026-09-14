@@ -48,6 +48,18 @@
     "verified": false,
     "notes": "本机无法运行验证，仅来源确认。osxexperts.net 是当前提供 Apple Silicon 静态构建且公布逐文件 SHA256 的站点；其页面公开的 ARM64 编译脚本含 --enable-libx264 --enable-libx265（x265 为 8/10/12bit 多位深合体），但属人工核对的编译脚本而非运行时验证。运行前需 xattr -dr com.apple.quarantine 去隔离，Apple Silicon 需 ad-hoc 签名 codesign -s - <file>。注意站点标注『for educational purposes only』，商用分发前需法务确认；evermeet.cx 明确不做 Apple Silicon 原生构建（其 Intel 版可经 Rosetta 2 运行，作为弱备选）。另一镜像备选：eugeneware/ffmpeg-static b6.1.1 的 ffmpeg-darwin-arm64（45568216 字节，sha256=a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584）与 ffprobe-darwin-arm64（45528808 字节，sha256=bb2db6f5d8cef919da12fbf592119a987202a8c060a886f3cab091f9cab90b64）。若以上均不可接受，macOS arm64 无带官方签名的成熟静态源，需自建（影响面：仅 L8 等级需要 x265，其余等级 x264+aac 即可）。"
   },
+  "windows-amd64": {
+    "url_zip": "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-14-13-17/ffmpeg-n8.1.2-52-g5a03dfa0f6-win64-gpl-8.1.zip",
+    "tag": "autobuild-2026-09-14-13-17",
+    "sha256_zip": "f42dca81bdcce7ccab00bde91ceceb96685beab97c42a77c003c90771b47eb17",
+    "ffmpeg_version": "n8.1.2-52-g5a03dfa0f6（BtbN win64-gpl 静态构建；zip 布局 <顶层>/bin/{ffmpeg,ffprobe}.exe，附带顶层 LICENSE.txt）",
+    "encoders_verified": false,
+    "encoders": ["libx264", "libx265", "aac"],
+    "verification": "本机下载实测（2026-09-14）：zip sha256 与 GitHub Release API digest 相符；编码器断言由 CI windows job 每趟实跑（先捕获 -encoders 输出再 grep，防 SIGPIPE）；本机 Linux 无法运行 .exe，首个 CI 绿跑后将 encoders_verified 改为 true",
+    "binary_sizes_bytes": {"ffmpeg.exe": 162880512, "ffprobe.exe": 162675712},
+    "license": "GPLv3（win64-gpl 构建 = --enable-gpl；zip 顶层 LICENSE.txt 随包分发）",
+    "notes": "钉 autobuild 日期 tag 而非 latest（latest 资产批次滚动，sha256 会漂移）；与 linux 备选源同版本线 n8.1.2-52-g5a03dfa0f6。Windows 无 johnvansickle/evermeet 等价物，BtbN 即 ffmpeg.org 官方下载页 Windows 区推荐源。目标基线 Windows 10+ x64；Win7 兼容未验证，下载页不声明。"
+  },
   "_research_date": "2026-09-14",
-  "_source_selection_note": "M5a 瘦身评估结论：linux 双架构主源改为 eugeneware/ffmpeg-static（johnvansickle 静态构建的 GitHub 镜像，全静态链接、sha256 由 Release API digest 锚定，amd64 实测 342MB→153MB 且 x264/x265/aac 编码冒烟通过）；BtbN 降为备选注记。darwin 侧保持 evermeet.cx（Intel，GPG 签名，体积更小）+ osxexperts.net（Apple Silicon）为主选，eugeneware 同名资产作为 CI 可达的无签名镜像备选。"
+  "_source_selection_note": "M5a 瘦身评估结论：linux 双架构主源改为 eugeneware/ffmpeg-static（johnvansickle 静态构建的 GitHub 镜像，全静态链接、sha256 由 Release API digest 锚定，amd64 实测 342MB→153MB 且 x264/x265/aac 编码冒烟通过）；BtbN 降为备选注记。darwin 侧保持 evermeet.cx（Intel，GPG 签名，体积更小）+ osxexperts.net（Apple Silicon）为主选，eugeneware 同名资产作为 CI 可达的无签名镜像备选。windows 主选 BtbN/FFmpeg-Builds 钉日期 autobuild tag（无更小体积或带签名的成熟静态源）。"
 }
