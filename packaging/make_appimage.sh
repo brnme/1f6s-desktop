@@ -236,11 +236,16 @@ for kind, url_key, sha_key in (("ffmpeg", "url_gz", "sha256_ffmpeg"),
     raw.chmod(0o755)
     print(f"    {kind}: sha256 校验通过 ({digest[:16]}…)")
 PY
-    # 编码器冒烟:与运行时 verifyEncoders 同一清单
-    "$dest/ffmpeg" -hide_banner -encoders 2>/dev/null | grep -qE "\blibx264\b"
-    "$dest/ffmpeg" -hide_banner -encoders 2>/dev/null | grep -qE "\blibx265\b"
-    "$dest/ffmpeg" -hide_banner -encoders 2>/dev/null | grep -qE "\baac\b"
-    "$dest/ffmpeg" -version | head -1
+    # 编码器冒烟:与运行时 verifyEncoders 同一清单。
+    # 先把输出捕获进变量再 grep——直接 `ffmpeg | grep -q` 会因 grep -q 提前退出
+    # 使 ffmpeg 收到 SIGPIPE,在 pipefail 下炸掉脚本(CI 实测 exit 141)。
+    local encoders version
+    encoders="$("$dest/ffmpeg" -hide_banner -encoders 2>/dev/null)"
+    grep -qE "\blibx264\b" <<<"$encoders"
+    grep -qE "\blibx265\b" <<<"$encoders"
+    grep -qE "\baac\b" <<<"$encoders"
+    version="$("$dest/ffmpeg" -version 2>/dev/null)"
+    printf '%s\n' "$version" | sed -n 1p
     ENGINES_DIR="$dest"
 }
 
