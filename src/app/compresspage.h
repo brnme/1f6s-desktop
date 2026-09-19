@@ -1,10 +1,13 @@
-// compresspage.h — 「压缩」页:多选文件入队,任务列表卡片(文件名/等级/进度/
-// 取消/打开文件夹),队列 FIFO 串行跑。
+// compresspage.h — 「压缩」页:多选文件入暂存列表,点「开始压缩」才入队;
+// 任务列表卡片(文件名/等级/进度/取消/打开文件夹),队列 FIFO 串行跑。
 // M4:三参数模式(等级/场景/微调,对齐网站 compress.html 的 mode-radio)+
 // 全部文案走 i18n。三模式统一产出 (level, overrides) 走既有 resolve→
 // buildCommands 流水线;微调空选项 = 继承基线等级(白名单语义)。
+// M5:选择与执行分离 —— addVideos 只暂存(参数在点开始时按当前界面取值),
+// startCompression 批量入队;分割任务占用队列时本页入口灰化(refreshGate)。
 #pragma once
 
+#include <QList>
 #include <QMap>
 #include <QWidget>
 
@@ -16,6 +19,7 @@
 
 class QComboBox;
 class QLabel;
+class QListWidget;
 class QProgressBar;
 class QPushButton;
 class QSpinBox;
@@ -30,7 +34,10 @@ public:
                  one6s::jobs::JobModel* model, QWidget* parent = nullptr);
 
 private slots:
-    void addVideos();          // 多选 → 逐个 probe → 入队
+    void addVideos();          // 多选 → 逐个 probe → 进暂存列表(不启动)
+    void startCompression();   // 暂存列表按当前参数批量入队
+    void removeStaged();       // 暂存列表:移除所选
+    void clearStaged();        // 暂存列表:清空
     void refreshLevelOptions();  // 等级模式:L7 时目标体积可见
     void refreshModeHint();      // 模式切换 → 提示行换文案
     void onTaskAdded(quint64 id);
@@ -40,10 +47,19 @@ private slots:
     void onFinished(quint64 id, one6s::jobs::JobState state, const QString& error);
 
 private:
+    // 暂存条目:addVideos 时 probe 好,点「开始压缩」才随参数一起入队。
+    struct Staged {
+        QString path;
+        double duration_s = 0.0;
+        bool has_audio = false;
+    };
+
     int rowOf(quint64 id) const;
     void insertRow(quint64 id);
     void refreshRow(quint64 id);
     QWidget* makeActions(quint64 id);
+    void refreshStageUi();   // 暂存列表内容/可见性(空则整体隐藏)
+    void refreshGate();      // 分割任务占用队列 → 灰化本页入口并提示
     // 等级显示名:i18n level.{id}.name 优先,缺失回退 levels.json 内嵌名。
     QString levelName(const QString& level_id) const;
     QString levelDisplay(const QString& level_id) const;
@@ -71,8 +87,15 @@ private:
     QComboBox* finetuneAudio_ = nullptr;
     QLabel* hintLabel_ = nullptr;   // 当前模式的提示行(upload.mode.*.hint)
     QPushButton* addBtn_ = nullptr;
+    QWidget* stageBox_ = nullptr;   // 暂存区容器(列表+按钮行),空时隐藏
+    QListWidget* stageList_ = nullptr;
+    QPushButton* removeBtn_ = nullptr;
+    QPushButton* clearBtn_ = nullptr;
+    QPushButton* startBtn_ = nullptr;
+    QLabel* gateLabel_ = nullptr;   // 分割占用时的一行灰化原因提示
     QTableWidget* table_ = nullptr;
     QLabel* statusLabel_ = nullptr;
 
+    QList<Staged> staged_;          // 待压缩文件(未入队)
     QMap<quint64, int> rows_;   // 任务 id → 表行号(随删除重排)
 };

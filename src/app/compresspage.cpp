@@ -8,6 +8,8 @@
 //              resolution / interval / grayscale / audio)
 #include "app/compresspage.h"
 
+#include <algorithm>
+
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QFileDialog>
@@ -15,6 +17,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QListWidget>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QSpinBox>
@@ -66,6 +69,14 @@ QString videoFilter() {
     return one6s::i18n::t(QStringLiteral("compress.filter.video")) +
            QStringLiteral(" (*.mp4 *.mkv *.mov *.avi *.webm *.m4v *.flv *.ts *.wmv);;") +
            one6s::i18n::t(QStringLiteral("compress.filter.all"));
+}
+
+// 暂存列表行的时长显示:mm:ss(小时并入分钟,如 125:30)。
+QString durationText(double seconds) {
+    const int total = qMax(0, static_cast<int>(seconds + 0.5));
+    return QStringLiteral("%1:%2")
+        .arg(total / 60, 2, 10, QChar('0'))
+        .arg(total % 60, 2, 10, QChar('0'));
 }
 
 }  // namespace
@@ -192,6 +203,34 @@ CompressPage::CompressPage(const one6s::Spec& spec, one6s::jobs::EnginePaths eng
     layout->addWidget(hintLabel_);
     refreshModeHint();
 
+    // --- 待压缩暂存区(选择与执行分离:选完只入列表,点「开始压缩」才入队) ---
+    stageBox_ = new QWidget(this);
+    auto* stageLayout = new QVBoxLayout(stageBox_);
+    stageLayout->setContentsMargins(0, 0, 0, 0);
+    stageLayout->setSpacing(6);
+    stageList_ = new QListWidget(stageBox_);
+    stageList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    stageList_->setMaximumHeight(150);
+    stageLayout->addWidget(stageList_);
+    auto* stageRow = new QHBoxLayout;
+    removeBtn_ = new QPushButton(
+        one6s::i18n::t(QStringLiteral("compress.stage.remove")), stageBox_);
+    connect(removeBtn_, &QPushButton::clicked, this, &CompressPage::removeStaged);
+    clearBtn_ = new QPushButton(
+        one6s::i18n::t(QStringLiteral("compress.stage.clear")), stageBox_);
+    connect(clearBtn_, &QPushButton::clicked, this, &CompressPage::clearStaged);
+    startBtn_ = new QPushButton(
+        one6s::i18n::t(QStringLiteral("compress.start")), stageBox_);
+    connect(startBtn_, &QPushButton::clicked, this, &CompressPage::startCompression);
+    startBtn_->setEnabled(false);
+    stageRow->addWidget(removeBtn_);
+    stageRow->addWidget(clearBtn_);
+    stageRow->addStretch(1);
+    stageRow->addWidget(startBtn_);
+    stageLayout->addLayout(stageRow);
+    layout->addWidget(stageBox_);
+    stageBox_->hide();
+
     // --- 任务列表卡片 ---
     table_ = new QTableWidget(this);
     table_->setColumnCount(5);
@@ -239,6 +278,7 @@ CompressPage::CompressPage(const one6s::Spec& spec, one6s::jobs::EnginePaths eng
 
     populateLevelCombo(levelCombo_, /*with_scene_tooltip=*/true);
     refreshLevelOptions();
+    refreshStageUi();
 }
 
 void CompressPage::populateLevelCombo(QComboBox* combo,
@@ -350,10 +390,8 @@ void CompressPage::addVideos() {
         return;
     }
 
-    QString level;
-    nlohmann::json overrides;
-    resolveCurrentSelection(&level, &overrides);
-
+    // 选择只做暂存 + probe(早暴露读不了的文件);参数在点「开始压缩」时
+    // 按当时界面选择取值,所见即所用。
     QStringList failed;
     int added = 0;
     for (const QString& path : files) {
@@ -366,18 +404,15 @@ void CompressPage::addVideos() {
                                    QString::fromUtf8(e.what())));
             continue;
         }
-        // 输出与源同目录:<stem>_1f6s.mp4,已存在则续号,永不覆盖(core 的 outputPath)。
-        const QString out = QString::fromStdString(one6s::encode::outputPath(
-            spec_, QFileInfo(path).absolutePath().toStdString(),
-            path.toStdString()));
-        model_->enqueue(path, out, level, overrides, r.duration_s, r.has_audio);
+        staged_.append(Staged{path, r.duration_s, r.has_audio});
         ++added;
     }
+    refreshStageUi();
 
     statusLabel_->setStyleSheet({});
     if (failed.isEmpty()) {
         statusLabel_->setText(one6s::i18n::t(
-            QStringLiteral("compress.status.added"),
+            QStringLiteral("compress.status.staged"),
             {{QStringLiteral("n"), QString::number(added)}}));
     } else {
         statusLabel_->setStyleSheet(QStringLiteral("color: #e06c75;"));
@@ -386,6 +421,62 @@ void CompressPage::addVideos() {
             {{QStringLiteral("n"), QString::number(added)},
              {QStringLiteral("failed"), failed.join(QStringLiteral("; "))}}));
     }
+}
+
+void CompressPage::startCompression() {
+    if (staged_.isEmpty()) return;
+
+    QString level;
+    nlohmann::json overrides;
+    resolveCurrentSelection(&level, &overrides);
+
+    for (const Staged& s : staged_) {
+        // 输出与源同目录:<stem>_1f6s.mp4,已存在则续号,永不覆盖(core 的 outputPath)。
+        const QString out = QString::fromStdString(one6s::encode::outputPath(
+            spec_, QFileInfo(s.path).absolutePath().toStdString(),
+            s.path.toStdString()));
+        model_->enqueue(s.path, out, level, overrides, s.duration_s, s.has_audio);
+    }
+    const int n = staged_.size();
+    staged_.clear();
+    refreshStageUi();
+
+    statusLabel_->setStyleSheet({});
+    statusLabel_->setText(one6s::i18n::t(
+        QStringLiteral("compress.status.added"),
+        {{QStringLiteral("n"), QString::number(n)}}));
+}
+
+void CompressPage::removeStaged() {
+    QList<int> rows;
+    for (QListWidgetItem* item : stageList_->selectedItems())
+        rows.append(stageList_->row(item));
+    // 行号在 staged_ 与 stageList_ 一一对应;从大行号删起避免位移。
+    std::sort(rows.begin(), rows.end(), [](int a, int b) { return a > b; });
+    for (int row : rows) staged_.removeAt(row);
+    refreshStageUi();
+}
+
+void CompressPage::clearStaged() {
+    staged_.clear();
+    refreshStageUi();
+}
+
+void CompressPage::refreshStageUi() {
+    stageList_->clear();
+    for (const Staged& s : staged_) {
+        auto* item = new QListWidgetItem(
+            QFileInfo(s.path).fileName() + QStringLiteral(" · ") +
+            durationText(s.duration_s));
+        item->setToolTip(s.path);
+        stageList_->addItem(item);
+    }
+    stageBox_->setVisible(!staged_.isEmpty());
+    refreshGate();
+}
+
+void CompressPage::refreshGate() {
+    startBtn_->setEnabled(!staged_.isEmpty());
 }
 
 int CompressPage::rowOf(quint64 id) const {
