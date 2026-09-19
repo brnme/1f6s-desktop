@@ -249,6 +249,9 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+          # tag 带 - 后缀(如 v0.2.0-beta.1)→ 标记 pre-release:
+          # /releases/latest 与网站下载页继续指向最后一个正式版。
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   # ---- 可选:Apple Silicon 原生构建(本次不启用,待真机验证后放开) ----
   # 差异点:
