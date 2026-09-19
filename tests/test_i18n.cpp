@@ -99,13 +99,11 @@ private slots:
             "level.L4.scene", "level.L7.expected",
             "scenario.email", "scenario.email.hint",
             "scenario.archive", "scenario.offline.hint",
-            // 网站抽取:三模式/红线/目标体积
+            // 三模式选项卡标题(网站抽取)与 hint/适用范围警示(桌面自有)
             "upload.mode.level", "upload.mode.level.hint",
             "upload.mode.scenario", "upload.mode.scenario.hint",
             "upload.mode.finetune", "upload.mode.finetune.hint",
             "upload.redline.body", "upload.redline.title",
-            "upload.target_mb", "upload.target_mb.hint",
-            "upload.finetune.grayscale", "upload.finetune.audio",
             // 桌面专属
             "app.title", "app.tab.settings", "app.banner.no_engine",
             "compress.status.ready", "compress.state.failed",

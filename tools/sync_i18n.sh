@@ -3,9 +3,12 @@
 #
 # 词条两个来源:
 #   1) 网站仓 app/locales/{en,zh}.json —— 抽取下方 REQUIRED_SITE_KEYS 子集
-#      (等级名/场景与提示/预期体积、三模式文案、目标体积、红线警示等);
+#      (等级名/场景与提示/预期体积、三模式选项卡标题、灰度开关等,
+#      与网站措辞保持同步的部分);
 #   2) assets/i18n/desktop.{en,zh}.json —— 桌面专属 UI 文案(两语手写,
-#      缺网站词条时的兜底也写在这里)。
+#      缺网站词条时的兜底也写在这里)。三模式 hint 与适用范围警示
+#      (upload.mode.*.hint / upload.redline.*)自 M5 起为桌面自有措辞,
+#      不再从网站拷贝——本地工具与服务端页面的语气不同。
 # 合并结果写入 assets/i18n/{en,zh}.json —— **生成物,勿手编**;改动请改
 # desktop.{en,zh}.json 或网站仓 locales 后重跑本脚本。key 两语必须对齐
 # (tests/test_i18n 有 parity 断言)。
@@ -28,22 +31,16 @@ site_repo, dest = Path(sys.argv[1]), Path(sys.argv[2])
 
 # 从网站 locales 抽取的子集 key(与网站 app/templates/compress.html 引用一致)。
 # 网站改 key 名时这里要同步改;网站缺某个 key 时由 desktop 文件兜底。
+# 仅收录 src/app 实际引用的网站词条;桌面未用的 upload.level/target_mb/
+# finetune.* 等不入库(桌面有自己的 compress.finetune.*/compress.target_label)。
 LEVELS = [f"L{i}" for i in range(1, 9)]
 SCENARIOS = ["email", "im", "training", "mooc", "demo",
              "compliance", "offline", "platform", "archive"]  # presets.py 插入序
 REQUIRED_SITE_KEYS = (
     [f"level.{lv}.{f}" for lv in LEVELS for f in ("name", "scene", "expected")]
     + [f"scenario.{sc}{sfx}" for sc in SCENARIOS for sfx in ("", ".hint")]
-    + ["upload.mode.level", "upload.mode.level.hint",
-       "upload.mode.scenario", "upload.mode.scenario.hint",
-       "upload.mode.finetune", "upload.mode.finetune.hint",
-       "upload.level", "upload.scenario",
-       "upload.target_mb", "upload.target_mb.hint",
-       "upload.redline.title", "upload.redline.body",
-       "upload.finetune.base", "upload.finetune.resolution",
-       "upload.finetune.interval", "upload.finetune.grayscale",
-       "upload.finetune.grayscale.on", "upload.finetune.grayscale.off",
-       "upload.finetune.audio"]
+    + ["upload.mode.level", "upload.mode.scenario", "upload.mode.finetune",
+       "upload.finetune.grayscale.on", "upload.finetune.grayscale.off"]
 )
 
 

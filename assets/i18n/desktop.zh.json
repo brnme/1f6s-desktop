@@ -1,5 +1,5 @@
 {
-  "about.blurb": "1f6s 倡议的桌面客户端:用随包 ffmpeg 本地转码,参数遵循 1f6s 八级压缩规范。",
+  "about.blurb": "视频在本地压缩、不上传;压缩等级与 1f6s 网站端一致。",
   "about.ffmpeg": "ffmpeg 版本",
   "about.spec": "规范版本",
   "about.spec_updated": "官网规范已更新(远程 v{remote},本地 v{local})。",
@@ -61,14 +61,14 @@
   "settings.language.system": "跟随系统",
   "settings.preset": "预设速度",
   "settings.preset.faster": "faster(更快)",
-  "settings.preset.hint": "非 slow 预设转码更快,但输出体积更大(对网站默认命令的有意偏离,记录于 AGENTS.md)。",
+  "settings.preset.hint": "非 slow 预设转码更快,但输出体积更大。",
   "settings.preset.medium": "medium(居中)",
-  "settings.preset.slow": "slow — 忠实倡议(默认)",
+  "settings.preset.slow": "slow(默认,与网站端一致)",
   "settings.preset.veryfast": "veryfast(最快)",
   "settings.priority": "低进程优先级",
   "settings.priority.hint": "以降低的进程优先级运行 ffmpeg,给前台应用让路。",
   "settings.threads": "线程上限(0 = 不限)",
-  "settings.threads.hint": "大于 0 时在每条压缩命令最后一个 token 前插入 \"-threads N\"(对网站命令的有意偏离,记录于 AGENTS.md)。",
+  "settings.threads.hint": "0 表示不限制;大于 0 时限制转码使用的线程数。",
   "split.cap.line": "单段时长上限:预检 {precheck} · 档位 {tier} MB(留 5% 余量)· 规划段长 {plan}",
   "split.cap.unlimited": "不设限",
   "split.cap.whole": "整段",
@@ -112,5 +112,10 @@
   "split.tier.label": "目标档位(单段体积上限):",
   "split.tier.org": "org 组织档",
   "split.tier.pro": "pro 专业档",
-  "split.warn.overlimit": "警告:该段体积仍超档位上限"
+  "split.warn.overlimit": "警告:该段体积仍超档位上限",
+  "upload.mode.finetune.hint": "以级别或场景为基线,手动微调少量参数。",
+  "upload.mode.level.hint": "选择八个压缩等级之一,默认 L4。",
+  "upload.mode.scenario.hint": "按视频用途自动选择合适的级别。",
+  "upload.redline.body": "本工具适合讲解、幻灯片类视频;体育、艺术类视频,或需要看清鼠标操作的软件演示可能不适合。",
+  "upload.redline.title": "适用范围"
 }

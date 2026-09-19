@@ -14,7 +14,7 @@ Compression parameters are the same as on the [web service](https://1f6s.com): t
   - *Level* — choose one of the eight levels L1–L8 directly (L4 is the default).
   - *Scene* — pick what the video is for (e-mail, instant messaging, training, MOOC, demo, compliance, offline viewing, platform upload, archive) and the matching level is applied.
   - *Fine-tune* — start from a baseline level and override resolution (720p/480p/360p), frame interval, grayscale, and audio bitrate.
-- **Batch queue** — add many files at once; each row shows live progress parsed from ffmpeg, and can be removed (queued) or cancelled (running). The output is written next to the source as `<stem>_1f6s.mp4` and never overwrites the original.
+- **Batch queue** — picked files wait in a staging list and only run after you press *Start compression*; each row shows live progress parsed from ffmpeg, and can be removed (queued) or cancelled (running). The output is written next to the source as `<stem>_1f6s.mp4` and never overwrites the original.
 - **Splitting** — cut oversized recordings into parts that fit the service's upload tiers (2048 / 5120 / 8192 MB, or a custom size), with a pre-flight check that rejects inputs the transcode could not finish in time.
 - **English and 中文 UI**, switchable in Settings (also: low-priority mode, thread cap, preset speed, custom ffmpeg/ffprobe paths).
 - **Spec update check** — the About page quietly asks `1f6s.com` whether a newer level specification has been published.

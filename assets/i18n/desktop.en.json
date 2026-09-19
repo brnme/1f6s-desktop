@@ -1,5 +1,5 @@
 {
-  "about.blurb": "Desktop client of the 1f6s initiative: transcodes locally with the bundled ffmpeg, following the 1f6s eight-level compression spec.",
+  "about.blurb": "Compresses videos locally — nothing is uploaded; compression levels match the 1f6s web service.",
   "about.ffmpeg": "ffmpeg version",
   "about.spec": "Spec version",
   "about.spec_updated": "The spec on 1f6s.com has been updated (remote v{remote}, local v{local}).",
@@ -61,14 +61,14 @@
   "settings.language.system": "System default",
   "settings.preset": "Preset speed",
   "settings.preset.faster": "faster (quicker)",
-  "settings.preset.hint": "Non-slow presets encode faster but produce larger files (a deliberate deviation from the website's default command, recorded in AGENTS.md).",
+  "settings.preset.hint": "Non-slow presets encode faster but produce larger files.",
   "settings.preset.medium": "medium (balanced)",
-  "settings.preset.slow": "slow — faithful to the initiative (default)",
+  "settings.preset.slow": "slow (default, matches the web service)",
   "settings.preset.veryfast": "veryfast (fastest)",
   "settings.priority": "Low process priority",
   "settings.priority.hint": "Run ffmpeg with a lowered priority so foreground apps stay responsive.",
   "settings.threads": "Thread limit (0 = unlimited)",
-  "settings.threads.hint": "When > 0, \"-threads N\" is inserted before the last token of each encode command (a deliberate deviation from the website command, recorded in AGENTS.md).",
+  "settings.threads.hint": "0 means no limit; values above 0 cap the threads used for encoding.",
   "split.cap.line": "Per-segment duration cap: precheck {precheck} · tier {tier} MB (5% headroom) · planned segment {plan}",
   "split.cap.unlimited": "no limit",
   "split.cap.whole": "whole input",
@@ -112,5 +112,10 @@
   "split.tier.label": "Target tier (max size per segment):",
   "split.tier.org": "Org tier",
   "split.tier.pro": "Pro tier",
-  "split.warn.overlimit": "Warning: this segment still exceeds the tier size cap"
+  "split.warn.overlimit": "Warning: this segment still exceeds the tier size cap",
+  "upload.mode.finetune.hint": "Start from a level or scenario, then adjust a few parameters.",
+  "upload.mode.level.hint": "Pick one of the eight compression levels; L4 by default.",
+  "upload.mode.scenario.hint": "Pick what the video is for and a level is chosen automatically.",
+  "upload.redline.body": "explainer and slide-style videos. Sports or artistic footage, and demos where seeing the cursor matters, may not be a good fit.",
+  "upload.redline.title": "Best suited for"
 }
