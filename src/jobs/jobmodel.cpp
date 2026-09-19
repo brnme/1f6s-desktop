@@ -144,6 +144,18 @@ QList<JobRecord> JobModel::records() const {
     return out;
 }
 
+bool JobModel::hasOpenTasks(JobKind kind) const {
+    if (activeId_ != 0) {
+        const auto it = records_.find(activeId_);
+        if (it != records_.end() && it->second.kind == kind) return true;
+    }
+    for (const quint64 id : queue_) {
+        const auto it = records_.find(id);
+        if (it != records_.end() && it->second.kind == kind) return true;
+    }
+    return false;
+}
+
 void JobModel::startNext() {
     if (activeId_ != 0 || queue_.empty()) return;
     if (!engines_.ok()) {  // 队列里残留的作业一并落失败

@@ -203,6 +203,13 @@ CompressPage::CompressPage(const one6s::Spec& spec, one6s::jobs::EnginePaths eng
     layout->addWidget(hintLabel_);
     refreshModeHint();
 
+    // 分割任务占用队列时的一行原因提示(灰化期间可见)。
+    gateLabel_ = new QLabel(this);
+    gateLabel_->setWordWrap(true);
+    gateLabel_->setStyleSheet(QStringLiteral("color: #e5c07b;"));
+    gateLabel_->hide();
+    layout->addWidget(gateLabel_);
+
     // --- 待压缩暂存区(选择与执行分离:选完只入列表,点「开始压缩」才入队) ---
     stageBox_ = new QWidget(this);
     auto* stageLayout = new QVBoxLayout(stageBox_);
@@ -476,7 +483,16 @@ void CompressPage::refreshStageUi() {
 }
 
 void CompressPage::refreshGate() {
-    startBtn_->setEnabled(!staged_.isEmpty());
+    // 压缩与切片共用一个 FIFO 队列:分割任务排队/运行中时灰化本页入口,
+    // 并说明原因;同侧压缩任务不限制(批处理仍可继续入队)。
+    const bool split_open =
+        model_->hasOpenTasks(one6s::jobs::JobKind::Split);
+    addBtn_->setEnabled(!split_open);
+    startBtn_->setEnabled(!staged_.isEmpty() && !split_open);
+    gateLabel_->setVisible(split_open);
+    if (split_open)
+        gateLabel_->setText(
+            one6s::i18n::t(QStringLiteral("compress.gate.hint")));
 }
 
 int CompressPage::rowOf(quint64 id) const {
@@ -559,9 +575,13 @@ void CompressPage::refreshRow(quint64 id) {
     }
 }
 
-void CompressPage::onTaskAdded(quint64 id) { insertRow(id); }
+void CompressPage::onTaskAdded(quint64 id) {
+    refreshGate();   // 对侧(分割)任务入队 → 本页入口灰化
+    insertRow(id);
+}
 
 void CompressPage::onTaskRemoved(quint64 id) {
+    refreshGate();   // 对侧排队任务被移除 → 视情况解除灰化
     const int row = rowOf(id);
     if (row < 0) return;
     table_->removeRow(row);
@@ -581,6 +601,7 @@ void CompressPage::onProgress(quint64 id, int percent) {
 
 void CompressPage::onFinished(quint64 id, one6s::jobs::JobState state,
                               const QString& error) {
+    refreshGate();   // 对侧任务终结 → 视情况解除灰化(先于本页过滤)
     refreshRow(id);
     if (rowOf(id) < 0) return;   // 非本页任务(分割)
     if (state == one6s::jobs::JobState::Done) {

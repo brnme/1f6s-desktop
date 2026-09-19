@@ -99,6 +99,9 @@ public:
     void cancelCurrent();
 
     bool idle() const { return activeId_ == 0 && queue_.empty(); }
+    // 该类任务是否有排队/运行中的(未终结的)记录 —— 压缩/分割互斥灰化依据;
+    // failImmediate 直接落 Failed 的记录不算。
+    bool hasOpenTasks(JobKind kind) const;
     const JobRecord* record(quint64 id) const;  // 不存在 → nullptr
     QList<JobRecord> records() const;
 

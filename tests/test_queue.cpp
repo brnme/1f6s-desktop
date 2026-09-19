@@ -40,6 +40,7 @@ private slots:
     void fifoSerialCompletion();    // 契约 1:串行 + FIFO 顺序 + 状态变迁链
     void cancelRunningNextRuns();   // 契约 2:取消第一个,第二个仍执行
     void removeQueuedSemantics();   // 契约 3:移除 queued 任务 + 非 queued 拒绝
+    void hasOpenTasksGating();      // 契约 5:按 kind 统计未终结任务(互斥灰化依据)
 
 private:
     static QString qstr(const std::string& s) { return QString::fromStdString(s); }
@@ -234,6 +235,72 @@ void TestQueue::removeQueuedSemantics() {
     QVERIFY(!QFileInfo::exists(out2));
     QVERIFY(QFileInfo::exists(out1));
     QVERIFY(model.idle());  // 移除后队列排空,id1 完成即整体空闲
+}
+
+void TestQueue::hasOpenTasksGating() {
+    using one6s::jobs::JobKind;
+    using one6s::jobs::SplitParams;
+
+    // 引擎缺失 → failImmediate 直接落 Failed(终态),不算 open。
+    {
+        JobModel broken;   // 未注入引擎
+        broken.setSpec(spec_);
+        broken.enqueue(input1_, input1_ + QStringLiteral(".out.mp4"),
+                       QStringLiteral("L4"), nlohmann::json::object(), 1.0, true);
+        SplitParams p;
+        p.inputPath = input1_;
+        broken.enqueueSplit(p);
+        QVERIFY(!broken.hasOpenTasks(JobKind::Compress));
+        QVERIFY(!broken.hasOpenTasks(JobKind::Split));
+    }
+
+    JobModel model;
+    model.setSpec(spec_);
+    model.setEngines(engines_);
+
+    QEventLoop loop;
+    QTimer::singleShot(240000, &loop, &QEventLoop::quit);
+    int finished_count = 0;
+    QObject::connect(&model, &JobModel::jobFinished, this,
+                     [&](quint64 id, JobState st, const QString&) {
+                         ++finished_count;
+                         if (finished_count == 1) {
+                             // 压缩先终结,分割随即接棒:此刻恰为 压缩关/分割开。
+                             QVERIFY(!model.hasOpenTasks(JobKind::Compress));
+                             QVERIFY(model.hasOpenTasks(JobKind::Split));
+                         }
+                         if (finished_count == 2) loop.quit();
+                     });
+
+    const QString out1 = qstr(outputPath(spec_, dir_.path().toStdString(),
+                                         input1_.toStdString()));
+    const quint64 id1 = model.enqueue(input1_, out1, QStringLiteral("L4"),
+                                      nlohmann::json::object(), 1.0, true);
+    QVERIFY(model.hasOpenTasks(JobKind::Compress));   // running
+    QVERIFY(!model.hasOpenTasks(JobKind::Split));
+
+    SplitParams p;
+    p.inputPath = input2_;
+    p.outputDir = dir_.path();
+    p.durationS = 1.0;
+    p.sizeBytes = static_cast<double>(QFileInfo(input2_).size());
+    p.width = 320;
+    p.height = 240;
+    p.codec = "h264";
+    p.tierMaxMb = 2048.0;
+    p.segmentLenS = 0.0;   // 0 = 执行器自行 planSplit(1s 输入 → 整段 1 部分)
+    p.plannedParts = 0;
+    const quint64 id2 = model.enqueueSplit(p);
+    QVERIFY(model.hasOpenTasks(JobKind::Split));      // queued(压缩占位)
+    QVERIFY(model.record(id2)->state == JobState::Queued);
+    QVERIFY(id1 != id2);
+
+    loop.exec();
+
+    // 全部终结 → 两类都归 false。
+    QVERIFY(!model.hasOpenTasks(JobKind::Compress));
+    QVERIFY(!model.hasOpenTasks(JobKind::Split));
+    QVERIFY(model.idle());
 }
 
 QTEST_MAIN(TestQueue)

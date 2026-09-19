@@ -132,6 +132,13 @@ SplitPage::SplitPage(one6s::jobs::EnginePaths engines, one6s::jobs::JobModel* mo
     layout->addWidget(estimateLabel_);
 
     // --- 第 4 步:执行 ---
+    // 压缩任务占用队列时的一行原因提示(灰化期间可见)。
+    gateLabel_ = new QLabel(this);
+    gateLabel_->setWordWrap(true);
+    gateLabel_->setStyleSheet(QStringLiteral("color: #e5c07b;"));
+    gateLabel_->hide();
+    layout->addWidget(gateLabel_);
+
     startBtn_ = new QPushButton(one6s::i18n::t(QStringLiteral("split.start")), this);
     startBtn_->setEnabled(false);
     connect(startBtn_, &QPushButton::clicked, this, &SplitPage::startSplit);
@@ -184,13 +191,18 @@ SplitPage::SplitPage(one6s::jobs::EnginePaths engines, one6s::jobs::JobModel* mo
     openDirBtn_->setEnabled(false);
     uploadBtn_->setEnabled(false);
 
-    // --- 队列信号接线(只跟自己的最近一次分割任务) ---
+    // --- 队列信号接线(进度/结果只跟自己的最近一次分割任务;闸门跟全队列) ---
+    connect(model_, &one6s::jobs::JobModel::taskAdded, this,
+            &SplitPage::onTaskAdded);
+    connect(model_, &one6s::jobs::JobModel::taskRemoved, this,
+            &SplitPage::onTaskRemoved);
     connect(model_, &one6s::jobs::JobModel::taskUpdated, this,
             &SplitPage::onTaskUpdated);
     connect(model_, &one6s::jobs::JobModel::jobProgress, this,
             &SplitPage::onProgress);
     connect(model_, &one6s::jobs::JobModel::jobFinished, this,
             &SplitPage::onFinished);
+    refreshGate();
 }
 
 bool SplitPage::loadTierConfig(QString& error) {
@@ -339,7 +351,26 @@ void SplitPage::refreshPreview() {
 }
 
 void SplitPage::setStartEnabled(bool on) {
-    startBtn_->setEnabled(on && configOk_ && probe_.has_value() && plan_.parts >= 1);
+    // 开始按钮三重条件:本页预览就绪 + 压缩任务未占用队列(互斥灰化)
+    // + 没有未终结的分割任务(杜绝同一计划连点重复提交)。
+    const bool gated = model_->hasOpenTasks(one6s::jobs::JobKind::Compress) ||
+                       model_->hasOpenTasks(one6s::jobs::JobKind::Split);
+    startBtn_->setEnabled(on && configOk_ && probe_.has_value() &&
+                          plan_.parts >= 1 && !gated);
+}
+
+void SplitPage::refreshGate() {
+    // 压缩与切片共用一个 FIFO 队列:压缩任务排队/运行中时灰化本页入口,
+    // 并说明原因;结果表与打开按钮不受影响(仍可查看上次结果)。
+    const bool compress_open =
+        model_->hasOpenTasks(one6s::jobs::JobKind::Compress);
+    pickBtn_->setEnabled(!compress_open);
+    tierCombo_->setEnabled(configOk_ && !compress_open);
+    customSpin_->setEnabled(configOk_ && !compress_open);
+    gateLabel_->setVisible(compress_open);
+    if (compress_open)
+        gateLabel_->setText(one6s::i18n::t(QStringLiteral("split.gate.hint")));
+    setStartEnabled(probe_.has_value() && plan_.parts >= 1);
 }
 
 void SplitPage::startSplit() {
@@ -365,6 +396,10 @@ void SplitPage::startSplit() {
     statusLabel_->setText(one6s::i18n::t(QStringLiteral("split.status.enqueued")));
     resetResultUi();
 }
+
+void SplitPage::onTaskAdded(quint64) { refreshGate(); }
+
+void SplitPage::onTaskRemoved(quint64) { refreshGate(); }
 
 void SplitPage::onTaskUpdated(quint64 id) {
     if (id != lastSplitId_) return;
@@ -392,6 +427,7 @@ void SplitPage::resetResultUi() {
 
 void SplitPage::onFinished(quint64 id, one6s::jobs::JobState state,
                            const QString& error) {
+    refreshGate();   // 任一任务终结 → 视情况解除灰化(先于本页过滤)
     if (id != lastSplitId_) return;
     const one6s::jobs::JobRecord* rec = model_->record(id);
     if (!rec) return;
